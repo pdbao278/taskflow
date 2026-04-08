@@ -52,6 +52,8 @@ model User {
   email          String   @unique
   name           String
   password_hash  String
+  failed_login_attempts Int      @default(0)
+  locked_until          DateTime?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
