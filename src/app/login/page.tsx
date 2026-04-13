@@ -82,7 +82,8 @@ export default function LoginPage() {
         );
       }
 
-      router.push("/app/my-tasks");
+      const redirectPath = searchParams.get("redirect") || "/app/my-tasks";
+      router.push(redirectPath);
     } catch (e) {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {

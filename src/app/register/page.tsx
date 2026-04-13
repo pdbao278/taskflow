@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const registerSchema = z
   .object({
@@ -22,6 +22,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -64,7 +65,8 @@ export default function RegisterPage() {
         window.localStorage.setItem("taskflow_auth_event", Date.now().toString());
       }
 
-      router.push("/app/my-tasks");
+      const redirectPath = searchParams.get("redirect") || "/app/my-tasks";
+      router.push(redirectPath);
     } catch (e) {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {

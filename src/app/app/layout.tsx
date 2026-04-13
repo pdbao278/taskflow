@@ -1,32 +1,47 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { getAuthUser } from "@/lib/session";
+import { getPrisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { LogoutButton } from "../components/LogoutButton";
+import { Sidebar } from "../components/Sidebar";
+import { AuthSync } from "../components/AuthSync";
+import { getActiveWorkspace } from "@/lib/workspace";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await getAuthUser();
+  if (!user) {
+    redirect("/login");
+  }
 
-  useEffect(() => {
-    const handler = (event: StorageEvent) => {
-      if (event.key === "taskflow_auth_event") {
-        router.push("/login?message=Phiên làm việc đã hết hạn.");
-      }
-    };
-
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [router]);
+  const activeWorkspace = await getActiveWorkspace(user.id);
+  
+  // If no workspace exists at all, we should probably redirect to a setup page or show a minimal UI
+  // But for now, getActiveWorkspace returns null if no memberships.
+  const workspaces = activeWorkspace?.allWorkspaces || [];
+  const activeId = activeWorkspace?.id || "";
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50">
-      <header className="w-full border-b border-zinc-200 bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-4">
-          <span className="text-sm font-medium text-zinc-900">TaskFlow</span>
+    <div className="min-h-screen flex bg-zinc-50">
+      <AuthSync />
+      
+      {/* Desktop Sidebar */}
+      <Sidebar 
+        workspaces={workspaces} 
+        activeWorkspaceId={activeId} 
+      />
+
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-12 border-b border-zinc-200 bg-white flex items-center justify-between px-6 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold bg-zinc-900 text-white px-1.5 py-0.5 rounded tracking-tighter">TF</span>
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Workspace</span>
+          </div>
           <LogoutButton />
-        </div>
-      </header>
-      <main className="flex-1">{children}</main>
+        </header>
+
+        <main className="flex-1 overflow-y-auto bg-zinc-50/50">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

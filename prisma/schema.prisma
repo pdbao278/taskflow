@@ -220,6 +220,7 @@ model InviteToken {
   token        String    @unique
   expires_at   DateTime
   accepted_at  DateTime?
+  role         workspace_role @default(Member)
   created_at   DateTime  @default(now())
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
