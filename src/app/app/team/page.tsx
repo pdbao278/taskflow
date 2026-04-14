@@ -21,7 +21,10 @@ export default async function TeamPage() {
         </p>
       </div>
 
-      <TeamKanbanClient currentUserRole={role} />
+      <TeamKanbanClient
+        currentUserRole={role}
+        currentUserId={user.id}
+      />
     </div>
   );
 }

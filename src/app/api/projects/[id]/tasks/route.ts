@@ -71,17 +71,33 @@ export async function GET(
         deleted_at: null,
       },
       include: {
-        assignee: { select: { id: true, name: true, email: true } },
+        assignee: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            workspace_members: {
+              where: { workspace_id: ws.workspaceId },
+              select: { id: true }
+            }
+          } 
+        },
         creator: { select: { id: true, name: true, email: true } },
       },
       orderBy: [{ status: "asc" }, { due_date: "asc" }, { created_at: "desc" }],
     });
 
     // Assignee removed from workspace → show [Removed User] (PRD 10.1)
-    const data = tasks.map((t) => ({
-      ...t,
-      assignee: t.assignee ?? { id: null, name: "[Removed User]", email: null },
-    }));
+    const data = tasks.map((t) => {
+      const isAssigneeActive = t.assignee && t.assignee.workspace_members.length > 0;
+      
+      return {
+        ...t,
+        assignee: isAssigneeActive 
+          ? { id: t.assignee!.id, name: t.assignee!.name, email: t.assignee!.email } 
+          : { id: null, name: "[Removed User]", email: null },
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err: any) {

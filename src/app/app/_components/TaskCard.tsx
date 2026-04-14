@@ -11,6 +11,8 @@ export type TaskItem = {
   status: "ToDo" | "InProgress" | "InReview" | "Done";
   priority: "Low" | "Medium" | "High" | "Urgent";
   due_date: string | null;
+  /** Denormalized để check permission drag-drop mà không cần lookup thêm */
+  assignee_id: string | null;
   assignee: { id: string | null; name: string; email: string | null } | null;
   creator: { id: string; name: string; email: string };
   project?: { id: string; name: string; color: string };

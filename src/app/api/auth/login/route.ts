@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordOk = await comparePassword(password, user.password_hash);
+    const passwordOk = await comparePassword(password, (user as any).password_hash);
 
     if (!passwordOk) {
       const failedAttempts = ((user as any).failed_login_attempts ?? 0) + 1;

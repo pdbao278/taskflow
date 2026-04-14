@@ -242,10 +242,10 @@ export function TaskDetailPanel({
   const isCreator = task?.creator.id === task?.current_user_id;
   const isAssignee = task?.assignee?.id != null && task?.assignee.id === task?.current_user_id;
 
-  const canEditStatus = !!task && (isManagerOrAdmin || isAssignee);
+  const canEditStatus = !!task && (isManagerOrAdmin || isAssignee || isCreator);
   const canEditContent = !!task && (isManagerOrAdmin || isCreator);
-  const canEdit = canEditStatus || canEditContent;
-  const canDelete = task && (task.current_user_role === "Manager" || task.current_user_role === "Admin");
+  const canEdit = canEditContent || canEditStatus;
+  const canDelete = task && (isManagerOrAdmin || isCreator);
   const overdue = task ? isOverdue(task.due_date, task.status) : false;
 
   return (
@@ -437,9 +437,9 @@ export function TaskDetailPanel({
                       <div className="relative">
                         <select
                           {...register("assignee_id")}
-                          disabled={!canEditContent}
+                          disabled={!isManagerOrAdmin}
                           className={`w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg outline-none appearance-none focus:ring-2 focus:ring-zinc-200 pr-7 ${
-                            !canEditContent ? "bg-zinc-50 cursor-not-allowed opacity-75" : ""
+                            !isManagerOrAdmin ? "bg-zinc-50 cursor-not-allowed opacity-75" : ""
                           }`}
                         >
                           <option value="">-- Không assign --</option>

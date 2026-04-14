@@ -21,6 +21,7 @@ export default async function ProjectDetailPage(
       <ProjectDetailClient
         projectId={id}
         currentUserRole={currentUserRole}
+        currentUserId={user.id}
       />
     </div>
   );

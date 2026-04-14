@@ -87,17 +87,33 @@ export async function GET(req: NextRequest) {
       },
       include: {
         project: { select: { id: true, name: true, color: true } },
-        assignee: { select: { id: true, name: true, email: true } },
+        assignee: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            workspace_members: {
+              where: { workspace_id: ws.workspaceId },
+              select: { id: true }
+            }
+          } 
+        },
         creator: { select: { id: true, name: true } },
       },
       orderBy: { created_at: "desc" },
     });
 
-    // Handle removed users
-    const data = tasks.map((t) => ({
-      ...t,
-      assignee: t.assignee ?? { id: null, name: "[Removed User]", email: null },
-    }));
+    // Handle removed users: Assignee must exist in DB AND still be part of the workspace.
+    const data = tasks.map((t) => {
+      const isAssigneeActive = t.assignee && t.assignee.workspace_members.length > 0;
+      
+      return {
+        ...t,
+        assignee: isAssigneeActive 
+          ? { id: t.assignee!.id, name: t.assignee!.name, email: t.assignee!.email } 
+          : { id: null, name: "[Removed User]", email: null },
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err: any) {
@@ -138,7 +154,11 @@ export async function POST(req: NextRequest) {
     }
 
     const { title, description, project_id, priority, due_date, status } = result.data;
-    const assignee_id = result.data.assignee_id || null; // Normalize empty string to null
+    
+    // Rule: Member-created tasks are auto-assigned to self and cannot be assigned to others (User Req)
+    const assignee_id = ws.role === "Member" 
+      ? user.id 
+      : (result.data.assignee_id || null);
 
     const prisma = getPrisma();
 

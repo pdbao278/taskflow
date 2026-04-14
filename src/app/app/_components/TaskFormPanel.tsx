@@ -47,6 +47,8 @@ interface TaskFormPanelProps {
   defaultProjectId?: string;
   /** Pre-select a status when opened from Kanban column */
   defaultStatus?: "ToDo" | "InProgress" | "InReview" | "Done";
+  currentUserRole?: string;
+  currentUserId?: string;
 }
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────
@@ -99,6 +101,8 @@ export function TaskFormPanel({
   onCreated,
   defaultProjectId,
   defaultStatus,
+  currentUserRole,
+  currentUserId,
 }: TaskFormPanelProps) {
   const [projects, setProjects]     = useState<Project[]>([]);
   const [members, setMembers]       = useState<Member[]>([]);
@@ -163,8 +167,12 @@ export function TaskFormPanel({
       if (defaultStatus) {
         setValue("status", defaultStatus);
       }
+      // Rule: Member creates task -> assigned to self, lock field (User Req)
+      if (currentUserRole === "Member" && currentUserId) {
+        setValue("assignee_id", currentUserId);
+      }
     }
-  }, [open, defaultProjectId, defaultStatus, setValue]);
+  }, [open, defaultProjectId, defaultStatus, currentUserRole, currentUserId, setValue]);
 
   // Focus first input when panel opens
   useEffect(() => {
@@ -443,7 +451,10 @@ export function TaskFormPanel({
                   <select
                     id="task-assignee"
                     {...register("assignee_id")}
-                    className="w-full px-3 py-2.5 text-sm border border-zinc-300 rounded-lg outline-none appearance-none focus:ring-2 focus:ring-offset-0 focus:border-zinc-500 focus:ring-zinc-200 pr-9"
+                    disabled={currentUserRole === "Member"}
+                    className={`w-full px-3 py-2.5 text-sm border border-zinc-300 rounded-lg outline-none appearance-none transition-all focus:ring-2 focus:ring-offset-0 focus:border-zinc-500 focus:ring-zinc-200 pr-9 ${
+                      currentUserRole === "Member" ? "bg-zinc-50 cursor-not-allowed opacity-75" : ""
+                    }`}
                   >
                     <option value="">-- Không assign --</option>
                     {members.map((m) => (

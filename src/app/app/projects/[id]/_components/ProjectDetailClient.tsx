@@ -19,6 +19,8 @@ import Link from "next/link";
 import { TaskCard, type TaskItem } from "../../../_components/TaskCard";
 import { TaskFormPanel } from "../../../_components/TaskFormPanel";
 import { TaskDetailPanel } from "../../../_components/TaskDetailPanel";
+import { SharedKanbanBoard } from "../../../_components/kanban/SharedKanbanBoard";
+import type { TaskStatus } from "../../../_components/kanban/KanbanColumn";
 
 type Project = {
   id: string;
@@ -38,6 +40,7 @@ type Toast = { id: number; type: "success" | "error"; message: string };
 interface ProjectDetailClientProps {
   projectId: string;
   currentUserRole: string;
+  currentUserId: string;
 }
 
 // ─── Status Constants ─────────────────────────────────────────────────────────
@@ -115,6 +118,7 @@ function ConfirmDialog({
 export function ProjectDetailClient({
   projectId,
   currentUserRole,
+  currentUserId,
 }: ProjectDetailClientProps) {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
@@ -134,8 +138,14 @@ export function ProjectDetailClient({
   const [defaultStatus, setDefaultStatus] = useState<"ToDo" | "InProgress" | "InReview" | "Done" | undefined>(undefined);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const canMutate =
+  const isManagerOrAdmin =
     currentUserRole === "Admin" || currentUserRole === "Manager";
+
+  const isArchived = !!project?.archived_at;
+  const canCreateTask = !isArchived; // Manager & Member can create (FR-04)
+  const canManageProject = isManagerOrAdmin; // Only Manager can edit/archive (FR-03)
+
+
 
   const addToast = useCallback(
     (type: "success" | "error", message: string) => {
@@ -185,6 +195,47 @@ export function ProjectDetailClient({
     fetchProject();
     fetchTasks();
   }, [fetchProject, fetchTasks]);
+
+  const handleStatusChange = useCallback(
+    async (taskId: string, newStatus: TaskStatus) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      if (task.status === newStatus) return;
+
+      const canChange = isManagerOrAdmin || task.assignee_id === currentUserId || task.creator?.id === currentUserId;
+      if (!canChange) {
+        addToast("error", "Chỉ assignee hoặc Manager mới có thể đổi trạng thái");
+        return;
+      }
+
+      const prevTasks = tasks;
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+      );
+
+      try {
+        const res = await apiFetch(`/api/tasks/${taskId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        const body = await res.json();
+        if (!body.success) {
+          setTasks(prevTasks);
+          addToast("error", body.error || "Có lỗi xảy ra");
+        } else {
+          addToast("success", "Đã cập nhật trạng thái");
+          fetchProject(); // Update completed count
+        }
+      } catch {
+        setTasks(prevTasks);
+        addToast("error", "Có lỗi xảy ra. Thử lại?");
+      }
+    },
+    [tasks, isManagerOrAdmin, currentUserId, addToast, fetchProject]
+  );
+
+
 
   const handleEdit = async (data: ProjectFormData) => {
     if (!project) return;
@@ -296,8 +347,6 @@ export function ProjectDetailClient({
       </div>
     );
   }
-
-  const isArchived = !!project.archived_at;
   const progress =
     project.total_tasks > 0
       ? Math.round((project.completed_tasks / project.total_tasks) * 100)
@@ -353,7 +402,7 @@ export function ProjectDetailClient({
             </div>
 
             {/* Actions (Admin/Manager only) */}
-            {canMutate && (
+            {canManageProject && (
               <div className="flex items-center gap-2 shrink-0">
                 {!isArchived && (
                   <>
@@ -436,7 +485,7 @@ export function ProjectDetailClient({
           >
             <RefreshCcw className={`w-4 h-4 ${tasksLoading ? "animate-spin" : ""}`} />
           </button>
-          {!isArchived && canMutate && (
+          {canCreateTask && (
             <button
               onClick={() => {
                 setDefaultStatus(undefined);
@@ -452,59 +501,19 @@ export function ProjectDetailClient({
       </div>
 
       {/* Kanban Board / Task Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-24">
-        {STATUS_COLUMNS.map((col) => {
-          const statusTasks = tasks.filter((t) => t.status === col.id);
-          return (
-            <div key={col.id} className="flex flex-col min-h-[200px]">
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${col.id === 'ToDo' ? 'bg-zinc-400' : col.id === 'InProgress' ? 'bg-blue-400' : col.id === 'InReview' ? 'bg-purple-400' : 'bg-emerald-400'}`} />
-                  <h3 className="text-sm font-bold text-zinc-600 uppercase tracking-wider">
-                    {col.label}
-                  </h3>
-                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
-                    {statusTasks.length}
-                  </span>
-                </div>
-              </div>
-
-              <div className={`flex-1 rounded-xl p-2 space-y-3 bg-zinc-100/30 border border-zinc-200/50 min-h-[150px]`}>
-                {tasksLoading ? (
-                  Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="h-32 bg-zinc-200/50 rounded-xl animate-pulse" />
-                  ))
-                ) : statusTasks.length > 0 ? (
-                  statusTasks.map((task) => (
-                    <TaskCard 
-                      key={task.id} 
-                      task={task} 
-                      onClick={(t) => setSelectedTaskId(t.id)}
-                    />
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-zinc-200 rounded-xl">
-                    <p className="text-xs text-zinc-400">Không có task</p>
-                  </div>
-                )}
-                
-                {!isArchived && canMutate && (
-                  <button
-                    onClick={() => {
-                      setDefaultStatus(col.id as any);
-                      setCreateOpen(true);
-                    }}
-                    className="w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg border border-dashed border-transparent hover:border-zinc-200 transition-all"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Thêm task
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <SharedKanbanBoard
+        tasks={tasks}
+        currentUserId={currentUserId}
+        currentUserRole={currentUserRole}
+        isLoading={tasksLoading}
+        canMutate={canCreateTask}
+        onTaskClick={(t) => setSelectedTaskId(t.id)}
+        onStatusChange={handleStatusChange}
+        onAddTask={(status) => {
+          setDefaultStatus(status);
+          setCreateOpen(true);
+        }}
+      />
 
       {/* Task Panels */}
       <TaskFormPanel
@@ -516,6 +525,8 @@ export function ProjectDetailClient({
         onCreated={handleTaskCreated}
         defaultProjectId={projectId}
         defaultStatus={defaultStatus}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
       />
 
       <TaskDetailPanel

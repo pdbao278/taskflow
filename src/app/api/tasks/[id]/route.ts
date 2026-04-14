@@ -34,7 +34,17 @@ async function getTaskInWorkspace(taskId: string, workspaceId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
     include: {
-      assignee: { select: { id: true, name: true, email: true } },
+      assignee: { 
+        select: { 
+          id: true, 
+          name: true, 
+          email: true,
+          workspace_members: {
+            where: { workspace_id: workspaceId },
+            select: { id: true }
+          }
+        } 
+      },
       creator: { select: { id: true, name: true, email: true } },
       project: { select: { id: true, name: true, color: true, archived_at: true } },
       activity_logs: {
@@ -106,10 +116,13 @@ export async function GET(
       );
     }
 
-    // Assignee removed from workspace (onDelete: SetNull) → show [Removed User]
+    // Assignee removed from workspace (onDelete: SetNull or workspace_member deleted) → show [Removed User]
+    const isAssigneeActive = task!.assignee && (task!.assignee as any).workspace_members?.length > 0;
     const taskData = {
       ...task,
-      assignee: task!.assignee ?? { id: null, name: "[Removed User]", email: null },
+      assignee: isAssigneeActive 
+        ? { id: task!.assignee!.id, name: task!.assignee!.name, email: task!.assignee!.email } 
+        : { id: null, name: "[Removed User]", email: null },
       current_user_role: ws.role,
       current_user_id: user.id,
     };
@@ -178,9 +191,9 @@ export async function PATCH(
 
     // 1. Check permission for Status Change (PRD US-02)
     if (status !== undefined && status !== task!.status) {
-      if (!isAssignee && !isManagerOrAdmin) {
+      if (!isAssignee && !isCreator && !isManagerOrAdmin) {
         return NextResponse.json(
-          { success: false, error: "Chỉ assignee hoặc Manager mới có thể đổi trạng thái" },
+          { success: false, error: "Chỉ assignee, người tạo task hoặc Manager mới có thể đổi trạng thái" },
           { status: 403 }
         );
       }
@@ -195,6 +208,16 @@ export async function PATCH(
       (priority !== undefined && priority !== task!.priority) ||
       (due_date !== undefined && normalize(due_date) !== normalize(task!.due_date?.toISOString())) ||
       (assignee_id !== undefined && normalize(assignee_id) !== normalize(task!.assignee_id));
+
+    // Rule: Member cannot change assignee (User Req)
+    if (assignee_id !== undefined && normalize(assignee_id) !== normalize(task!.assignee_id)) {
+      if (ws.role === "Member") {
+        return NextResponse.json(
+          { success: false, error: "Member không có quyền thay đổi người phân công" },
+          { status: 403 }
+        );
+      }
+    }
 
     if (hasContentChanges) {
       if (!isCreator && !isManagerOrAdmin) {
@@ -330,7 +353,17 @@ export async function PATCH(
           ...(status !== undefined && { status }),
         },
         include: {
-          assignee: { select: { id: true, name: true, email: true } },
+          assignee: { 
+            select: { 
+              id: true, 
+              name: true, 
+              email: true,
+              workspace_members: {
+                where: { workspace_id: ws.workspaceId },
+                select: { id: true }
+              }
+            } 
+          },
           creator: { select: { id: true, name: true, email: true } },
           project: { select: { id: true, name: true, color: true, archived_at: true } },
           activity_logs: {
@@ -368,9 +401,12 @@ export async function PATCH(
       return updatedTask;
     });
 
+    const isAssigneeActive = updated.assignee && (updated.assignee as any).workspace_members?.length > 0;
     const taskData = {
       ...updated,
-      assignee: updated.assignee ?? { id: null, name: "[Removed User]", email: null },
+      assignee: isAssigneeActive 
+        ? { id: updated.assignee!.id, name: updated.assignee!.name, email: updated.assignee!.email } 
+        : { id: null, name: "[Removed User]", email: null },
       current_user_role: ws.role,
       current_user_id: user.id,
     };
@@ -404,14 +440,7 @@ export async function DELETE(
       );
     }
 
-    // Only Manager/Admin can soft-delete (PRD FR-04)
-    if (ws.role === "Member") {
-      return NextResponse.json(
-        { success: false, error: "Chỉ Manager hoặc Admin mới có thể xóa task" },
-        { status: 403 }
-      );
-    }
-
+    // 4. Fetch task
     const { task, error } = await getTaskInWorkspace(id, ws.workspaceId);
 
     if (error === "not_found") {
@@ -423,6 +452,17 @@ export async function DELETE(
     if (error === "forbidden") {
       return NextResponse.json(
         { success: false, error: "Không có quyền truy cập" },
+        { status: 403 }
+      );
+    }
+
+    // 5. Authorization: creator | Manager | Admin (PRD FR-04 update)
+    const isManagerOrAdmin = ws.role === "Manager" || ws.role === "Admin";
+    const isCreator = task!.created_by === user.id;
+
+    if (!isCreator && !isManagerOrAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Chỉ người tạo task hoặc Manager mới có thể xóa task" },
         { status: 403 }
       );
     }
