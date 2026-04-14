@@ -29,7 +29,6 @@ const menuItems = [
     title: "Dự án",
     icon: Briefcase,
     href: "/app/projects",
-    disabled: true,
   },
   {
     title: "Team / Kanban",

@@ -1,5 +1,4 @@
 import { getAuthUser } from "@/lib/session";
-import { getPrisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "../components/LogoutButton";
 import { Sidebar } from "../components/Sidebar";
@@ -14,8 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const activeWorkspace = await getActiveWorkspace(user.id);
   
-  // If no workspace exists at all, we should probably redirect to a setup page or show a minimal UI
-  // But for now, getActiveWorkspace returns null if no memberships.
+  // getActiveWorkspace returns the active workspace and a list of all memberships
   const workspaces = activeWorkspace?.allWorkspaces || [];
   const activeId = activeWorkspace?.id || "";
 
