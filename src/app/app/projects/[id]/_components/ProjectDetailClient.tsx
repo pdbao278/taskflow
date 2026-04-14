@@ -12,8 +12,13 @@ import {
   Loader2,
   AlertTriangle,
   Briefcase,
+  Plus,
+  RefreshCcw,
 } from "lucide-react";
 import Link from "next/link";
+import { TaskCard, type TaskItem } from "../../../_components/TaskCard";
+import { TaskFormPanel } from "../../../_components/TaskFormPanel";
+import { TaskDetailPanel } from "../../../_components/TaskDetailPanel";
 
 type Project = {
   id: string;
@@ -34,6 +39,17 @@ interface ProjectDetailClientProps {
   projectId: string;
   currentUserRole: string;
 }
+
+// ─── Status Constants ─────────────────────────────────────────────────────────
+
+const STATUS_COLUMNS = [
+  { id: "ToDo", label: "To Do", color: "bg-zinc-100" },
+  { id: "InProgress", label: "In Progress", color: "bg-blue-50" },
+  { id: "InReview", label: "In Review", color: "bg-purple-50" },
+  { id: "Done", label: "Done", color: "bg-emerald-50" },
+] as const;
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 function ConfirmDialog({
   open,
@@ -102,7 +118,9 @@ export function ProjectDetailClient({
 }: ProjectDetailClientProps) {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -110,6 +128,11 @@ export function ProjectDetailClient({
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Task interaction states
+  const [createOpen, setCreateOpen] = useState(false);
+  const [defaultStatus, setDefaultStatus] = useState<"ToDo" | "InProgress" | "InReview" | "Done" | undefined>(undefined);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const canMutate =
     currentUserRole === "Admin" || currentUserRole === "Manager";
@@ -143,9 +166,25 @@ export function ProjectDetailClient({
     }
   }, [projectId]);
 
+  const fetchTasks = useCallback(async () => {
+    setTasksLoading(true);
+    try {
+      const res = await apiFetch(`/api/projects/${projectId}/tasks`);
+      const body = await res.json();
+      if (body.success) {
+        setTasks(body.data);
+      }
+    } catch {
+      // handled
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     fetchProject();
-  }, [fetchProject]);
+    fetchTasks();
+  }, [fetchProject, fetchTasks]);
 
   const handleEdit = async (data: ProjectFormData) => {
     if (!project) return;
@@ -195,7 +234,29 @@ export function ProjectDetailClient({
     }
   };
 
-  // Loading skeleton
+  // Task Handlers
+  const handleTaskCreated = (newTask: any) => {
+    setTasks((prev) => [newTask, ...prev]);
+    setProject((prev) => prev ? { ...prev, total_tasks: prev.total_tasks + 1 } : prev);
+  };
+
+  const handleTaskUpdated = (updatedTask: any) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t))
+    );
+    // Re-calculate project completed tasks if needed
+    if (updatedTask.status) {
+      fetchProject(); // Lazy update for simplicity
+    }
+  };
+
+  const handleTaskDeleted = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setProject((prev) => prev ? { ...prev, total_tasks: prev.total_tasks - 1 } : prev);
+    fetchProject(); // Update completed count
+  };
+
+  // Loading skeleton for project header
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
@@ -258,7 +319,7 @@ export function ProjectDetailClient({
       </div>
 
       {/* Project header card */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm mb-6">
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm mb-8">
         {/* Color banner */}
         <div
           className="h-2 rounded-t-xl"
@@ -345,7 +406,7 @@ export function ProjectDetailClient({
 
       {/* Archived warning banner */}
       {isArchived && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3 mb-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3 mb-8">
           <Archive className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-amber-800">Project đã bị archive</p>
@@ -356,26 +417,113 @@ export function ProjectDetailClient({
         </div>
       )}
 
-      {/* Toast notifications */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
-              t.type === "success"
-                ? "bg-white border-emerald-200 text-emerald-700"
-                : "bg-white border-red-200 text-red-600"
-            }`}
+      {/* Task List Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          Danh sách Task
+          {!tasksLoading && (
+            <span className="text-xs font-medium text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+              {tasks.length}
+            </span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchTasks}
+            disabled={tasksLoading}
+            className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+            title="Làm mới tasks"
           >
-            {t.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-            ) : (
-              <Archive className="w-4 h-4 shrink-0" />
-            )}
-            {t.message}
-          </div>
-        ))}
+            <RefreshCcw className={`w-4 h-4 ${tasksLoading ? "animate-spin" : ""}`} />
+          </button>
+          {!isArchived && canMutate && (
+            <button
+              onClick={() => {
+                setDefaultStatus(undefined);
+                setCreateOpen(true);
+              }}
+              className="inline-flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm task
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Kanban Board / Task Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-24">
+        {STATUS_COLUMNS.map((col) => {
+          const statusTasks = tasks.filter((t) => t.status === col.id);
+          return (
+            <div key={col.id} className="flex flex-col min-h-[200px]">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${col.id === 'ToDo' ? 'bg-zinc-400' : col.id === 'InProgress' ? 'bg-blue-400' : col.id === 'InReview' ? 'bg-purple-400' : 'bg-emerald-400'}`} />
+                  <h3 className="text-sm font-bold text-zinc-600 uppercase tracking-wider">
+                    {col.label}
+                  </h3>
+                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
+                    {statusTasks.length}
+                  </span>
+                </div>
+              </div>
+
+              <div className={`flex-1 rounded-xl p-2 space-y-3 bg-zinc-100/30 border border-zinc-200/50 min-h-[150px]`}>
+                {tasksLoading ? (
+                  Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="h-32 bg-zinc-200/50 rounded-xl animate-pulse" />
+                  ))
+                ) : statusTasks.length > 0 ? (
+                  statusTasks.map((task) => (
+                    <TaskCard 
+                      key={task.id} 
+                      task={task} 
+                      onClick={(t) => setSelectedTaskId(t.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-zinc-200 rounded-xl">
+                    <p className="text-xs text-zinc-400">Không có task</p>
+                  </div>
+                )}
+                
+                {!isArchived && canMutate && (
+                  <button
+                    onClick={() => {
+                      setDefaultStatus(col.id as any);
+                      setCreateOpen(true);
+                    }}
+                    className="w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg border border-dashed border-transparent hover:border-zinc-200 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Thêm task
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Task Panels */}
+      <TaskFormPanel
+        open={createOpen}
+        onClose={() => {
+          setCreateOpen(false);
+          setDefaultStatus(undefined);
+        }}
+        onCreated={handleTaskCreated}
+        defaultProjectId={projectId}
+        defaultStatus={defaultStatus}
+      />
+
+      <TaskDetailPanel
+        taskId={selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onUpdated={handleTaskUpdated}
+        onDeleted={handleTaskDeleted}
+      />
 
       {/* Edit modal */}
       <ProjectFormModal
@@ -402,6 +550,27 @@ export function ProjectDetailClient({
         onConfirm={handleArchive}
         onCancel={() => setArchiveConfirm(false)}
       />
+
+      {/* Toasts */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
+              t.type === "success"
+                ? "bg-white border-emerald-200 text-emerald-700"
+                : "bg-white border-red-200 text-red-600"
+            }`}
+          >
+            {t.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <Archive className="w-4 h-4 shrink-0" />
+            )}
+            {t.message}
+          </div>
+        ))}
+      </div>
     </>
   );
 }

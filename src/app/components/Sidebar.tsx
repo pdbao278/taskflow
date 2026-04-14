@@ -34,7 +34,6 @@ const menuItems = [
     title: "Team / Kanban",
     icon: FolderKanban,
     href: "/app/team",
-    disabled: true,
   },
 ];
 
