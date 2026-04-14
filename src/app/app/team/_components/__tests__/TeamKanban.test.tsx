@@ -65,27 +65,22 @@ describe("TeamKanbanClient", () => {
     expect(apiFetch).toHaveBeenCalledWith(expect.stringContaining("/api/tasks"));
   });
   
-  it("2. Manager thấy nút Thêm Task (id: btn-team-add-task), Member thì không", async () => {
+  it("2. Manager và Member đều thấy nút Thêm Task (FR-04)", async () => {
     setupFetchMocks();
-
+    
+    // Test for Manager
     const { rerender } = render(
       <TeamKanbanClient currentUserRole="Manager" currentUserId="user-manager" />
     );
-
     await waitFor(() => {
-      expect(screen.getByText("Task của assignee")).toBeInTheDocument();
+      expect(screen.getByText("Thêm Task")).toBeInTheDocument();
     });
 
-    // Sử dụng test id thay vì role button vì column cũng có nút add task
-    expect(screen.getByText("Thêm Task")).toBeInTheDocument();
-
-    // Rerender with Member role
+    // Test for Member
     rerender(
       <TeamKanbanClient currentUserRole="Member" currentUserId="user-assignee" />
     );
-
-    // Ở member, trên màn sẽ KHÔNG CÓ nút text "Thêm Task" ở dạng button add 
-    // vì column add button cũng được hide với Member
-    expect(screen.queryByRole("button", { name: "Thêm Task" })).not.toBeInTheDocument();
+    // Member hiện đã có quyền tạo task và thấy nút Thêm Task (FR-04)
+    expect(screen.getByText("Thêm Task")).toBeInTheDocument();
   });
 });

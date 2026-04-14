@@ -19,6 +19,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
+import { TaskComments } from "./TaskComments";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,8 +136,44 @@ export function TaskDetailPanel({
   const [apiError, setApiError] = useState("");
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: "success" | "error" }[]>([]);
+  const [showAllLogs, setShowAllLogs] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(576); // default max-w-xl approx
+  const [isResizing, setIsResizing] = useState(false);
 
   const open = !!taskId;
+
+  // Load saved width
+  useEffect(() => {
+    const saved = localStorage.getItem("taskflow_panel_width");
+    if (saved) {
+      const w = parseInt(saved, 10);
+      if (w >= 400) setPanelWidth(w);
+    }
+  }, []);
+
+  // Resize logic
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 400 && newWidth <= window.innerWidth * 0.95) {
+        setPanelWidth(newWidth);
+      }
+    };
+
+    const onMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem("taskflow_panel_width", panelWidth.toString());
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isResizing, panelWidth]);
 
   const addToast = useCallback((msg: string, type: "success" | "error" = "success") => {
     const id = Date.now();
@@ -264,10 +301,26 @@ export function TaskDetailPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Chi tiết task"
-        className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 bottom-0 z-50 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
-        }`}
+        } ${isResizing ? "transition-none select-none" : ""}`}
+        style={{ 
+          width: typeof window !== "undefined" && window.innerWidth < 640 ? "100%" : `${panelWidth}px`,
+          maxWidth: "100vw"
+        }}
       >
+        {/* Resize handle */}
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+          className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-[60] group hover:bg-zinc-200 transition-colors ${
+            isResizing ? "bg-zinc-300" : ""
+          }`}
+        >
+          <div className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-8 bg-zinc-300 rounded-full opacity-0 group-hover:opacity-100" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 shrink-0">
           <div className="flex items-center gap-2">
@@ -552,11 +605,20 @@ export function TaskDetailPanel({
                 {/* Activity Log (PRD FR-10) */}
                 {!editing && task.activity_logs && task.activity_logs.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> Lịch sử hoạt động
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center justify-between">
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Lịch sử hoạt động</span>
+                      {task.activity_logs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllLogs(!showAllLogs)}
+                          className="text-zinc-600 hover:text-zinc-900 border border-zinc-200 bg-white px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-colors"
+                        >
+                          {showAllLogs ? "Thu gọn" : "Xem thêm"}
+                        </button>
+                      )}
                     </h3>
                     <div className="space-y-3">
-                      {task.activity_logs.map((log) => {
+                      {(showAllLogs ? task.activity_logs : task.activity_logs.slice(0, 1)).map((log) => {
                         const renderMessage = () => {
                           const userName = <span className="font-semibold text-zinc-900">{log.user?.name ?? "System"}</span>;
                           const timestamp = (
@@ -627,6 +689,17 @@ export function TaskDetailPanel({
                       })}
                     </div>
                   </div>
+                )}
+
+                {/* Comments (FR-06) */}
+                {!editing && task && (
+                  <TaskComments 
+                    taskId={task.id}
+                    currentUserId={task.current_user_id}
+                    currentUserRole={task.current_user_role}
+                    members={members}
+                    onCommentsChanged={() => fetchTask(task.id)}
+                  />
                 )}
               </div>
             </form>

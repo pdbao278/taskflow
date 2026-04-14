@@ -65,7 +65,13 @@ export function DraggableTaskCard({
     >
       {/* Permission tooltip khi không có quyền */}
       {!canDrag && (
-        <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl group/tooltip">
+        <div 
+          className="absolute inset-0 z-10 cursor-not-allowed rounded-xl group/tooltip"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+        >
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-zinc-800 text-white text-[10px] font-medium px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20">
             Chỉ assignee hoặc Manager mới có thể đổi trạng thái
           </div>

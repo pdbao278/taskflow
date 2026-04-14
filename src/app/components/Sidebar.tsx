@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils"; // Wait, I might not have cn() yet. Let's check or implement.
 
-const menuItems = [
+const menuItems: { title: string; icon: any; href: string; disabled?: boolean }[] = [
   {
     title: "Tổng quan",
     icon: LayoutDashboard,

@@ -285,8 +285,8 @@ function ProjectCard({ project }: { project: Project }) {
             className="mt-1 w-3 h-3 rounded-full shrink-0 ring-2 ring-offset-1"
             style={{
               backgroundColor: project.color,
-              ringColor: project.color + "40",
-            }}
+              borderColor: project.color + "40", // Fallback if needed
+            } as any}
           />
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">
