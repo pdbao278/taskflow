@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
+import { task_status } from "@prisma/client";
 
 // GET /api/tasks/my-tasks — List tasks assigned to the current user
 export async function GET(req: NextRequest) {
@@ -11,12 +12,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = req.nextUrl;
+    const statusParam = searchParams.get("status");
+    const sortParam = searchParams.get("sort") || "due_date_asc";
+
     const cookieStore = await cookies();
     const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
 
     if (!activeWorkspaceId) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy workspace đang hoạt động" },
+        { status: 400 }
+      );
+    }
+
+    if (statusParam && statusParam !== "ToDo" && statusParam !== "InProgress") {
+      return NextResponse.json(
+        { success: false, error: "Invalid status parameter" },
+        { status: 400 }
+      );
+    }
+
+    if (sortParam !== "due_date_asc") {
+      return NextResponse.json(
+        { success: false, error: "Invalid sort parameter" },
         { status: 400 }
       );
     }
@@ -45,17 +64,34 @@ export async function GET(req: NextRequest) {
         workspace_id: activeWorkspaceId,
         assignee_id: user.id,
         deleted_at: null,
+        status: statusParam ? (statusParam as task_status) : { not: "Done" },
       },
       include: {
         project: { select: { id: true, name: true, color: true } },
         assignee: { select: { id: true, name: true, email: true } },
         creator: { select: { id: true, name: true } },
       },
-      // PRD US-03: Sort by overdue first, then by due_date asc, then by status
-      orderBy: [
-        { due_date: "asc" },
-        { created_at: "desc" },
-      ],
+    });
+
+    const now = new Date();
+    // Normalize now to start of day for accurate overdue calculation (due dates don't have times in this app? actually they could, let's just use regular < now for exact overdue based on timestamp)
+    
+    tasks.sort((a, b) => {
+      const aOverdue = a.due_date && new Date(a.due_date) < now;
+      const bOverdue = b.due_date && new Date(b.due_date) < now;
+
+      // 1. Overdue comes first
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+
+      // 2. due_date asc
+      if (!a.due_date && b.due_date) return 1;
+      if (a.due_date && !b.due_date) return -1;
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+
+      return 0; // maintain original creation order if possible
     });
 
     // Handle removed users

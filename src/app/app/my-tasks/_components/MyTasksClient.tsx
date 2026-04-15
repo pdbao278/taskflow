@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/apiFetch";
 import { TaskCard, type TaskItem } from "../../_components/TaskCard";
 import { TaskDetailPanel } from "../../_components/TaskDetailPanel";
 import { 
-  Loader2, 
   CheckSquare, 
   Filter,
   RefreshCcw,
@@ -17,79 +17,60 @@ interface MyTasksClientProps {
 }
 
 export function MyTasksClient({ userId }: MyTasksClientProps) {
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"All" | "ToDo" | "InProgress">("All");
   const [search, setSearch] = useState("");
 
-  const fetchTasks = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) setRefreshing(true);
-    try {
-      const res = await apiFetch("/api/tasks/my-tasks");
-      const body = await res.json();
-      if (body.success) {
-        setTasks(body.data);
-      }
-    } catch {
-      // handled
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const fetchTasks = async () => {
+    let url = "/api/tasks/my-tasks";
+    const params = new URLSearchParams();
+    if (filter !== "All") {
+      params.append("status", filter);
     }
-  }, []);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    const res = await apiFetch(url);
+    const body = await res.json();
+    if (!body.success) throw new Error(body.error || "Failed to fetch tasks");
+    return body.data as TaskItem[];
+  };
+
+  const { data: tasks = [], isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["my-tasks", filter],
+    queryFn: fetchTasks,
+  });
 
   const handleTaskUpdated = (updatedTask: any) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t))
-    );
+    // Update data optimistically in cache
+    queryClient.setQueryData(["my-tasks", filter], (oldData: TaskItem[] | undefined) => {
+      if (!oldData) return [];
+      // If task status changes and no longer matches current filter, we could remove it.
+      // But simple updating is fine here too since users might want to see it slide away or we rely on invalidate.
+      // PRD says: "Optimistic UI khi đổi status"
+      // FR-07: exclude "Done" tasks always. If status changes to Done or out of filter, we remove.
+      if (updatedTask.status === "Done" || (filter !== "All" && updatedTask.status !== filter)) {
+        return oldData.filter(t => t.id !== updatedTask.id);
+      }
+      return oldData.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t));
+    });
+    // Invalidate slightly later to sync correctly
+    queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
   };
 
   const handleTaskDeleted = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    queryClient.setQueryData(["my-tasks", filter], (oldData: TaskItem[] | undefined) => {
+      if (!oldData) return [];
+      return oldData.filter((t) => t.id !== taskId);
+    });
   };
 
-  const filteredTasks = tasks
-    .filter((t) => {
-      if (filter === "All") return t.status !== "Done";
-      return t.status === filter;
-    })
-    .filter((t) => 
-      t.title.toLowerCase().includes(search.toLowerCase()) || 
-      t.project?.name.toLowerCase().includes(search.toLowerCase())
-    );
-
-  // Sort by Overdue first, then by priority (descending), then by due date
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    const now = new Date();
-    const aOverdue = a.due_date && new Date(a.due_date) < now && a.status !== "Done";
-    const bOverdue = b.due_date && new Date(b.due_date) < now && b.status !== "Done";
-
-    // 1. Overdue comes first
-    if (aOverdue && !bOverdue) return -1;
-    if (!aOverdue && bOverdue) return 1;
-
-    // 2. Then Level (Priority) descending
-    const PRIORITY_MAP = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
-    const aPrio = PRIORITY_MAP[a.priority as keyof typeof PRIORITY_MAP] || 0;
-    const bPrio = PRIORITY_MAP[b.priority as keyof typeof PRIORITY_MAP] || 0;
-
-    if (aPrio !== bPrio) return bPrio - aPrio;
-
-    // 3. Fallback to due date
-    if (!a.due_date && b.due_date) return 1;
-    if (a.due_date && !b.due_date) return -1;
-    if (a.due_date && b.due_date) {
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-    }
-
-    return 0;
-  });
+  // Searching is client-side according to typical pattern if we already fetch all (or we could fetch server side, but frontend search implies client side filtering of the fetched list here, PRD: "Search theo task title.")
+  const filteredTasks = tasks.filter((t) => 
+    t.title.toLowerCase().includes(search.toLowerCase()) || 
+    t.project?.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <>
@@ -107,11 +88,11 @@ export function MyTasksClient({ userId }: MyTasksClientProps) {
             />
           </div>
           <button
-            onClick={() => fetchTasks(true)}
-            disabled={refreshing}
+            onClick={() => refetch()}
+            disabled={isFetching}
             className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
           >
-            <RefreshCcw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCcw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
           </button>
         </div>
 
@@ -133,15 +114,15 @@ export function MyTasksClient({ userId }: MyTasksClientProps) {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-32 bg-zinc-100 rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : sortedTasks.length > 0 ? (
+      ) : filteredTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedTasks.map((task) => (
+          {filteredTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
