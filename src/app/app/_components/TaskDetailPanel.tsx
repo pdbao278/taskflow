@@ -15,11 +15,14 @@ import {
   Clock,
   Edit3,
   Save,
+  MessageSquare,
+  History,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { TaskComments } from "./TaskComments";
+import { TaskActivityTab } from "./TaskActivityTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +101,8 @@ const ACTION_LABELS: Record<string, string> = {
   Other:        "đã thay đổi",
 };
 
+type TabType = "comments" | "activity";
+
 function isOverdue(dateStr: string | null | undefined, status: string): boolean {
   if (!dateStr || status === "Done") return false;
   return new Date(dateStr) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -136,7 +141,7 @@ export function TaskDetailPanel({
   const [apiError, setApiError] = useState("");
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: "success" | "error" }[]>([]);
-  const [showAllLogs, setShowAllLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("comments");
   const [panelWidth, setPanelWidth] = useState(576); // default max-w-xl approx
   const [isResizing, setIsResizing] = useState(false);
 
@@ -602,104 +607,53 @@ export function TaskDetailPanel({
                   </div>
                 )}
 
-                {/* Activity Log (PRD FR-10) */}
-                {!editing && task.activity_logs && task.activity_logs.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center justify-between">
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Lịch sử hoạt động</span>
-                      {task.activity_logs.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllLogs(!showAllLogs)}
-                          className="text-zinc-600 hover:text-zinc-900 border border-zinc-200 bg-white px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-colors"
-                        >
-                          {showAllLogs ? "Thu gọn" : "Xem thêm"}
-                        </button>
-                      )}
-                    </h3>
-                    <div className="space-y-3">
-                      {(showAllLogs ? task.activity_logs : task.activity_logs.slice(0, 1)).map((log) => {
-                        const renderMessage = () => {
-                          const userName = <span className="font-semibold text-zinc-900">{log.user?.name ?? "System"}</span>;
-                          const timestamp = (
-                            <span className="text-zinc-400 font-normal">
-                              {" "}at {new Date(log.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          );
-                          
-                          if (log.action_type === "Create") {
-                            return <>Created by {userName}{timestamp}</>;
-                          }
-                          
-                          if (log.action_type === "StatusChange" && log.field_changed === "status") {
-                            const oldLabel = STATUS_LABELS[log.old_value || ""] || log.old_value;
-                            const newLabel = STATUS_LABELS[log.new_value || ""] || log.new_value;
-                            return (
-                              <>
-                                {userName} changed status from <span className="font-medium">{oldLabel}</span> → <span className="font-medium text-zinc-900">{newLabel}</span>{timestamp}
-                              </>
-                            );
-                          }
-                          
-                          if (log.action_type === "Update") {
-                            const fieldName = log.field_changed || "task";
-                            return (
-                              <>
-                                {userName} updated {fieldName}:{" "}
-                                <span className="text-zinc-500 line-through">{log.old_value || "none"}</span>{" "}
-                                → <span className="text-zinc-900">{log.new_value || "none"}</span>{timestamp}
-                              </>
-                            );
-                          }
-                          
-                          if (log.action_type === "Comment") {
-                            return <>{userName} comment: <span className="italic text-zinc-500">"{log.new_value}"</span>{timestamp}</>;
-                          }
-
-                          return (
-                            <>
-                              {userName} {ACTION_LABELS[log.action_type] || log.action_type}{timestamp}
-                              {log.field_changed && log.field_changed !== "deleted_at" && (
-                                <span className="text-zinc-400">
-                                  {" "}trường <em>{log.field_changed}</em>
-                                  {log.old_value && log.new_value && (
-                                    <>: <span className="line-through text-zinc-400">{log.old_value}</span> → <span className="text-zinc-700">{log.new_value}</span></>
-                                  )}
-                                </span>
-                              )}
-                            </>
-                          );
-                        };
-
-                        return (
-                          <div key={log.id} className="flex items-start gap-3">
-                            <div className="w-6 h-6 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[9px] font-bold text-zinc-500 shrink-0 mt-0.5">
-                              {log.user ? getInitials(log.user.name) : "?"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-zinc-600 leading-relaxed">
-                                {renderMessage()}
-                              </p>
-                              <p className="text-[10px] text-zinc-400">
-                                {new Date(log.created_at).toLocaleDateString("vi-VN")}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Comments (FR-06) */}
+                {/* Tabs: Comments / Activity (PRD FR-06, FR-10) */}
                 {!editing && task && (
-                  <TaskComments 
-                    taskId={task.id}
-                    currentUserId={task.current_user_id}
-                    currentUserRole={task.current_user_role}
-                    members={members}
-                    onCommentsChanged={() => fetchTask(task.id)}
-                  />
+                  <div>
+                    {/* Tab headers */}
+                    <div className="flex border-b border-zinc-200 mb-4">
+                      <button
+                        type="button"
+                        id="tab-comments"
+                        onClick={() => setActiveTab("comments")}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                          activeTab === "comments"
+                            ? "border-zinc-900 text-zinc-900"
+                            : "border-transparent text-zinc-400 hover:text-zinc-600"
+                        }`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Comments
+                      </button>
+                      <button
+                        type="button"
+                        id="tab-activity"
+                        onClick={() => setActiveTab("activity")}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                          activeTab === "activity"
+                            ? "border-zinc-900 text-zinc-900"
+                            : "border-transparent text-zinc-400 hover:text-zinc-600"
+                        }`}
+                      >
+                        <History className="w-3.5 h-3.5" />
+                        Activity
+                      </button>
+                    </div>
+
+                    {/* Tab content */}
+                    {activeTab === "comments" && (
+                      <TaskComments
+                        taskId={task.id}
+                        currentUserId={task.current_user_id}
+                        currentUserRole={task.current_user_role}
+                        members={members}
+                        onCommentsChanged={() => fetchTask(task.id)}
+                      />
+                    )}
+                    {activeTab === "activity" && (
+                      <TaskActivityTab taskId={task.id} />
+                    )}
+                  </div>
                 )}
               </div>
             </form>
