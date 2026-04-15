@@ -4,7 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { resolveActiveWorkspace } from "@/lib/workspace";
 import { task_status } from "@prisma/client";
 
-// GET /api/tasks/my-tasks — List tasks assigned to the current user
+// GET /api/tasks/my-tasks — List tasks assigned to the current user (or a target member for Manager)
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
     const statusParam = searchParams.get("status");
-    const sortParam = searchParams.get("sort") || "due_date_asc";
+    const userIdParam = searchParams.get("user_id"); // Manager read-only view (FR-11)
 
     const ws = await resolveActiveWorkspace(user.id);
     if (!ws) {
@@ -31,11 +31,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // user_id param: chỉ Manager/Admin mới được dùng để xem task của member khác
+    const isManagerOrAdmin = ws.role === "Manager" || ws.role === "Admin";
+    const targetUserId = userIdParam && isManagerOrAdmin ? userIdParam : user.id;
+
+    // Nếu Member cố tình truyền user_id khác → 403
+    if (userIdParam && !isManagerOrAdmin && userIdParam !== user.id) {
+      return NextResponse.json(
+        { success: false, error: "Không có quyền xem task của người khác" },
+        { status: 403 }
+      );
+    }
+
     const prisma = getPrisma();
+
+    // Nếu Manager xem task của member khác, validate member thuộc workspace
+    if (userIdParam && isManagerOrAdmin && userIdParam !== user.id) {
+      const membership = await prisma.workspaceMember.findUnique({
+        where: {
+          workspace_id_user_id: {
+            workspace_id: ws.id,
+            user_id: userIdParam,
+          },
+        },
+      });
+      if (!membership) {
+        return NextResponse.json(
+          { success: false, error: "Thành viên không thuộc workspace này" },
+          { status: 404 }
+        );
+      }
+    }
+
     const tasks = await prisma.task.findMany({
       where: {
         workspace_id: ws.id,
-        assignee_id: user.id,
+        assignee_id: targetUserId,
         deleted_at: null,
         status: statusParam ? (statusParam as task_status) : { not: "Done" },
       },
@@ -69,7 +100,14 @@ export async function GET(req: NextRequest) {
       assignee: t.assignee ?? { id: null, name: "[Removed User]", email: null },
     }));
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({
+      success: true,
+      data,
+      // Trả về metadata để FE biết đây là read-only mode
+      meta: {
+        is_read_only: userIdParam !== null && userIdParam !== user.id,
+      },
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message || "Internal Server Error" },

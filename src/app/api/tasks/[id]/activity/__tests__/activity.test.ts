@@ -6,6 +6,11 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(),
 }));
 
+// Mock @/lib/workspace
+vi.mock("@/lib/workspace", () => ({
+  resolveActiveWorkspace: vi.fn(),
+}));
+
 // Mock user session
 vi.mock("@/lib/session", () => ({
   getAuthUser: vi.fn(),
@@ -19,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({
 import { cookies } from "next/headers";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
+import { resolveActiveWorkspace } from "@/lib/workspace";
 import { GET } from "../route";
 
 function makeRequest(params?: Record<string, string>): NextRequest {
@@ -70,9 +76,13 @@ const MOCK_USER = { id: "user-1", name: "Alice", email: "a@a.com" };
 
 beforeEach(() => {
   vi.resetAllMocks();
-  (cookies as any).mockResolvedValue({
-    get: (key: string) =>
-      key === "active_workspace_id" ? { value: "ws-1" } : undefined,
+  (resolveActiveWorkspace as any).mockImplementation(async (userId: string) => {
+    const prisma = getPrisma();
+    const membership = await prisma.workspaceMember.findUnique({
+      where: { workspace_id_user_id: { workspace_id: "ws-1", user_id: userId } },
+    });
+    if (!membership) return null;
+    return { id: membership.workspace_id, role: membership.role };
   });
 });
 

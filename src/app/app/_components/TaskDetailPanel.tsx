@@ -59,6 +59,8 @@ interface TaskDetailPanelProps {
   onClose: () => void;
   onUpdated?: (task: TaskDetail) => void;
   onDeleted?: (taskId: string) => void;
+  /** When true, hides edit/delete controls (Manager viewing member tasks via FR-11) */
+  readOnly?: boolean;
 }
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -130,6 +132,7 @@ export function TaskDetailPanel({
   onClose,
   onUpdated,
   onDeleted,
+  readOnly = false,
 }: TaskDetailPanelProps) {
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -284,10 +287,10 @@ export function TaskDetailPanel({
   const isCreator = task?.creator.id === task?.current_user_id;
   const isAssignee = task?.assignee?.id != null && task?.assignee.id === task?.current_user_id;
 
-  const canEditStatus = !!task && (isManagerOrAdmin || isAssignee || isCreator);
-  const canEditContent = !!task && (isManagerOrAdmin || isCreator);
+  const canEditStatus = !readOnly && !!task && (isManagerOrAdmin || isAssignee || isCreator);
+  const canEditContent = !readOnly && !!task && (isManagerOrAdmin || isCreator);
   const canEdit = canEditContent || canEditStatus;
-  const canDelete = task && (isManagerOrAdmin || isCreator);
+  const canDelete = !readOnly && task && (isManagerOrAdmin || isCreator);
   const overdue = task ? isOverdue(task.due_date, task.status) : false;
 
   return (
@@ -335,8 +338,8 @@ export function TaskDetailPanel({
                 style={{ backgroundColor: task.project.color }}
               />
             )}
-            <span className="text-sm font-semibold text-zinc-900 truncate max-w-xs">
-              {loading ? "Đang tải..." : task?.project?.name ?? "Chi tiết task"}
+            <span className="text-base font-bold text-zinc-900 truncate max-w-xs">
+              {loading ? "Đang tải..." : task?.project?.name ? `Dự án: ${task.project.name}` : "Chi tiết task"}
             </span>
           </div>
           <div className="flex items-center gap-2">

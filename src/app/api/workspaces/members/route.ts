@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { resolveActiveWorkspace } from "@/lib/workspace";
 
 // GET /api/workspaces/members — list all members of the active workspace
 export async function GET(req: NextRequest) {
@@ -11,37 +11,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const cookieStore = await cookies();
-    const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
+    const ws = await resolveActiveWorkspace(user.id);
 
-    if (!activeWorkspaceId) {
+    if (!ws) {
       return NextResponse.json(
-        { success: false, error: "Không tìm thấy workspace đang hoạt động" },
-        { status: 400 }
+        { success: false, error: "Không tìm thấy workspace đang hoạt động hoặc không có quyền" },
+        { status: 403 }
       );
     }
 
     const prisma = getPrisma();
 
-    // Verify requester is a member
-    const membership = await prisma.workspaceMember.findUnique({
-      where: {
-        workspace_id_user_id: {
-          workspace_id: activeWorkspaceId,
-          user_id: user.id,
-        },
-      },
-    });
-
-    if (!membership) {
-      return NextResponse.json(
-        { success: false, error: "Không có quyền truy cập" },
-        { status: 403 }
-      );
-    }
-
     const members = await prisma.workspaceMember.findMany({
-      where: { workspace_id: activeWorkspaceId },
+      where: { workspace_id: ws.id },
       include: {
         user: { select: { id: true, name: true, email: true } },
       },

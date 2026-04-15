@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiFetch";
 import { TaskCard, type TaskItem } from "../../_components/TaskCard";
 import { TaskDetailPanel } from "../../_components/TaskDetailPanel";
-import { 
-  CheckSquare, 
+import {
+  CheckSquare,
   Filter,
   RefreshCcw,
-  Search
+  Search,
+  EyeIcon,
 } from "lucide-react";
 
 interface MyTasksClientProps {
@@ -18,18 +20,23 @@ interface MyTasksClientProps {
 
 export function MyTasksClient({ userId }: MyTasksClientProps) {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"All" | "ToDo" | "InProgress">("All");
   const [search, setSearch] = useState("");
 
+  // Read-only mode: Manager viewing another member's tasks (from Reports page)
+  const targetUserId = searchParams.get("user_id");
+  const memberName = searchParams.get("member_name");
+  const isReadOnly = !!targetUserId && targetUserId !== userId;
+
   const fetchTasks = async () => {
-    let url = "/api/tasks/my-tasks";
     const params = new URLSearchParams();
-    if (filter !== "All") {
-      params.append("status", filter);
-    }
+    if (filter !== "All") params.append("status", filter);
+    // Pass user_id for Manager read-only view (FR-11)
+    if (targetUserId && isReadOnly) params.append("user_id", targetUserId);
     const qs = params.toString();
-    if (qs) url += `?${qs}`;
+    const url = `/api/tasks/my-tasks${qs ? `?${qs}` : ""}`;
 
     const res = await apiFetch(url);
     const body = await res.json();
@@ -38,7 +45,7 @@ export function MyTasksClient({ userId }: MyTasksClientProps) {
   };
 
   const { data: tasks = [], isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["my-tasks", filter],
+    queryKey: ["my-tasks", filter, targetUserId],
     queryFn: fetchTasks,
   });
 
@@ -74,6 +81,18 @@ export function MyTasksClient({ userId }: MyTasksClientProps) {
 
   return (
     <>
+      {/* Read-only banner — Manager viewing another member's tasks (FR-11) */}
+      {isReadOnly && (
+        <div className="flex items-center gap-2 px-4 py-2.5 mb-5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <EyeIcon className="w-4 h-4 shrink-0 text-amber-600" />
+          <span>
+            Đang xem task của{" "}
+            <strong>{memberName || "thành viên"}</strong>.
+            Bạn chỉ có thể xem, không thể chỉnh sửa.
+          </span>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -149,8 +168,9 @@ export function MyTasksClient({ userId }: MyTasksClientProps) {
       <TaskDetailPanel
         taskId={selectedTaskId}
         onClose={() => setSelectedTaskId(null)}
-        onUpdated={handleTaskUpdated}
-        onDeleted={handleTaskDeleted}
+        onUpdated={isReadOnly ? undefined : handleTaskUpdated}
+        onDeleted={isReadOnly ? undefined : handleTaskDeleted}
+        readOnly={isReadOnly}
       />
     </>
   );

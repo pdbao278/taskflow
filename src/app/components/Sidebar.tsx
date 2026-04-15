@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  Settings, 
-  Users, 
-  Briefcase, 
+import {
+  LayoutDashboard,
+  CheckSquare,
+  Settings,
+  Users,
+  Briefcase,
   ChevronRight,
-  LogOut,
-  FolderKanban
+  FolderKanban,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils"; // Wait, I might not have cn() yet. Let's check or implement.
 
@@ -34,6 +34,11 @@ const menuItems: { title: string; icon: any; href: string; disabled?: boolean }[
     title: "Team / Kanban",
     icon: FolderKanban,
     href: "/app/team",
+  },
+  {
+    title: "Báo cáo",
+    icon: BarChart2,
+    href: "/app/reports",
   },
 ];
 
@@ -73,7 +78,9 @@ export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
 
   // Filter main menu
   const visibleMenuItems = menuItems.filter((item) => {
+    // Team Kanban and Reports: Manager/Admin only (PRD FR-08, FR-11)
     if (item.href === "/app/team") return isManagerOrAdmin;
+    if (item.href === "/app/reports") return isManagerOrAdmin;
     return true;
   });
 

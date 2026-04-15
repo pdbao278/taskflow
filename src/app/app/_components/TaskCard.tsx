@@ -95,7 +95,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: task.project.color }}
             />
-            <span className="text-xs text-zinc-400 truncate">{task.project.name}</span>
+            <span className="text-sm font-bold text-zinc-600 truncate">Dự án: {task.project.name}</span>
           </div>
         )}
 

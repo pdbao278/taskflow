@@ -20,6 +20,12 @@ vi.mock("next/headers", () => ({
   })),
 }));
 
+vi.mock("@/lib/workspace", () => ({
+  resolveActiveWorkspace: vi.fn(),
+}));
+
+import { resolveActiveWorkspace } from "@/lib/workspace";
+
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 
@@ -29,6 +35,12 @@ const mockFindManyTasks = vi.fn();
 describe("GET /api/tasks/team", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    (resolveActiveWorkspace as any).mockImplementation(async (userId: string) => {
+      const membership = await mockFindUniqueWorkspace();
+      if (!membership) return null;
+      return { id: "ws-1", role: membership.role || "Member" };
+    });
 
     (getPrisma as any).mockReturnValue({
       workspaceMember: {

@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
 async function resolveWorkspace(userId: string) {
-  const cookieStore = await cookies();
-  const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
-  const prisma = getPrisma();
-
-  if (!activeWorkspaceId) return null;
-
-  const membership = await prisma.workspaceMember.findUnique({
-    where: {
-      workspace_id_user_id: {
-        workspace_id: activeWorkspaceId,
-        user_id: userId,
-      },
-    },
-  });
-
-  if (!membership) return null;
-  return { workspaceId: activeWorkspaceId, role: membership.role };
+  const active = await resolveActiveWorkspace(userId);
+  if (!active) return null;
+  return { workspaceId: active.id, role: active.role };
 }
 
 // GET /api/tasks/[id]/comments
