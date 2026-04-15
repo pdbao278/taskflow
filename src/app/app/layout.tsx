@@ -5,6 +5,7 @@ import { Sidebar } from "../components/Sidebar";
 import { AuthSync } from "../components/AuthSync";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { NewTaskButton } from "./_components/NewTaskButton";
+import { NotificationBell } from "../components/notifications/NotificationBell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser();
@@ -50,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {(activeWorkspace?.currentRole === "Admin" || activeWorkspace?.currentRole === "Manager") && (
               <NewTaskButton />
             )}
+            <NotificationBell />
             <LogoutButton />
           </div>
         </header>

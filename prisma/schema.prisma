@@ -6,7 +6,178 @@ datasource db {
   provider = "postgresql"
 }
 
-// --- Enums (PascalCase values, e.g. Low/Medium/High/Urgent) ---
+model User {
+  id                    String            @id @default(cuid())
+  email                 String            @unique
+  name                  String
+  password_hash         String
+  failed_login_attempts Int               @default(0)
+  locked_until          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+  activity_logs         ActivityLog[]
+  comments              Comment[]
+  notifications         Notification[]
+  tasks_assigned        Task[]            @relation("task_assignee")
+  tasks_created         Task[]            @relation("task_created_by")
+  workspace_members     WorkspaceMember[]
+  workspaces_created    Workspace[]       @relation("workspace_created_by")
+
+  @@map("users")
+}
+
+model Workspace {
+  id              String            @id @default(cuid())
+  name            String
+  created_by      String
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  invite_tokens   InviteToken[]
+  projects        Project[]
+  members         WorkspaceMember[]
+  created_by_user User              @relation("workspace_created_by", fields: [created_by], references: [id])
+
+  @@index([created_by])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id           String         @id @default(cuid())
+  workspace_id String
+  user_id      String
+  role         workspace_role
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  user         User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  workspace    Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, user_id])
+  @@index([user_id])
+  @@index([workspace_id])
+  @@map("workspace_members")
+}
+
+model Project {
+  id           String    @id @default(cuid())
+  workspace_id String
+  name         String
+  description  String?
+  color        String
+  archived_at  DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, archived_at])
+  @@map("projects")
+}
+
+model Task {
+  id            String        @id @default(cuid())
+  project_id    String
+  /// Denormalized workspace id for scoped queries; must match `project.workspace_id`.
+  workspace_id  String
+  title         String        @db.VarChar(200)
+  /// FR-04: markdown, max 5000 characters (enforce in Zod too).
+  description   String?       @db.VarChar(5000)
+  status        task_status   @default(ToDo)
+  priority      task_priority @default(Medium)
+  assignee_id   String?
+  due_date      DateTime?
+  created_by    String
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  deleted_at    DateTime?
+  activity_logs ActivityLog[]
+  comments      Comment[]
+  assignee      User?         @relation("task_assignee", fields: [assignee_id], references: [id])
+  creator       User          @relation("task_created_by", fields: [created_by], references: [id])
+  project       Project       @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([project_id])
+  @@index([assignee_id])
+  @@index([created_by])
+  @@index([status])
+  @@index([due_date])
+  @@index([deleted_at])
+  @@index([workspace_id, title])
+  @@index([workspace_id, deleted_at])
+  @@map("tasks")
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  task_id    String
+  user_id    String
+  content    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  task       Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@index([user_id])
+  @@index([task_id, created_at])
+  @@map("comments")
+}
+
+/// Append-only audit trail — no soft delete; deletion is not exposed in the API (PRD FR-10 / NFR-07).
+/// Rows are not removed when a task is hard-deleted (`onDelete: Restrict` on task).
+model ActivityLog {
+  id            String               @id @default(cuid())
+  task_id       String
+  user_id       String?
+  field_changed String?              @db.VarChar(128)
+  old_value     String?
+  new_value     String?
+  action_type   activity_action_type
+  created_at    DateTime             @default(now())
+  task          Task                 @relation(fields: [task_id], references: [id])
+  user          User?                @relation(fields: [user_id], references: [id])
+
+  @@index([task_id])
+  @@index([user_id])
+  @@index([task_id, created_at])
+  @@index([action_type])
+  @@map("activity_logs")
+}
+
+model Notification {
+  id           String            @id @default(cuid())
+  user_id      String
+  type         notification_type
+  reference_id String?           @db.VarChar(128)
+  content      String?
+  read_at      DateTime?
+  created_at   DateTime          @default(now())
+  user         User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([user_id, read_at])
+  @@index([user_id, created_at])
+  @@index([reference_id])
+  @@map("notifications")
+}
+
+model InviteToken {
+  id           String         @id @default(cuid())
+  workspace_id String
+  email        String
+  token        String         @unique
+  expires_at   DateTime
+  accepted_at  DateTime?
+  created_at   DateTime       @default(now())
+  role         workspace_role
+  workspace    Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, email])
+  @@index([workspace_id])
+  @@index([email])
+  @@map("invite_tokens")
+}
 
 enum workspace_role {
   Admin
@@ -43,190 +214,4 @@ enum notification_type {
   Mention
   InviteAccepted
   Other
-}
-
-// --- Models (fields: snake_case) ---
-
-model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String
-  password_hash  String
-  failed_login_attempts Int      @default(0)
-  locked_until          DateTime?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  workspaces_created Workspace[]        @relation("workspace_created_by")
-  workspace_members  WorkspaceMember[]
-  tasks_assigned     Task[]             @relation("task_assignee")
-  tasks_created      Task[]             @relation("task_created_by")
-  comments           Comment[]
-  activity_logs      ActivityLog[]
-  notifications      Notification[]
-
-  @@map("users")
-}
-
-model Workspace {
-  id          String   @id @default(cuid())
-  name        String
-  created_by  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  created_by_user User @relation("workspace_created_by", fields: [created_by], references: [id], onDelete: Restrict)
-
-  members       WorkspaceMember[]
-  projects      Project[]
-  invite_tokens InviteToken[]
-
-  @@index([created_by])
-  @@map("workspaces")
-}
-
-model WorkspaceMember {
-  id           String          @id @default(cuid())
-  workspace_id String
-  user_id      String
-  role         workspace_role
-  created_at   DateTime        @default(now())
-  updated_at   DateTime        @updatedAt
-
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([workspace_id, user_id])
-  @@index([user_id])
-  @@index([workspace_id])
-  @@map("workspace_members")
-}
-
-model Project {
-  id           String    @id @default(cuid())
-  workspace_id String
-  name         String
-  description  String?   @db.Text
-  color        String
-  archived_at  DateTime?
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  tasks     Task[]
-
-  @@index([workspace_id])
-  @@index([workspace_id, archived_at])
-  @@map("projects")
-}
-
-model Task {
-  id           String         @id @default(cuid())
-  project_id   String
-  /// Denormalized workspace id for scoped queries; must match `project.workspace_id`.
-  workspace_id String
-  title        String         @db.VarChar(200)
-  /// FR-04: markdown, max 5000 characters (enforce in Zod too).
-  description  String?        @db.VarChar(5000)
-  status       task_status    @default(ToDo)
-  priority     task_priority  @default(Medium)
-  assignee_id  String?
-  due_date     DateTime?
-  created_by   String
-  created_at   DateTime       @default(now())
-  updated_at   DateTime       @updatedAt
-  deleted_at   DateTime?
-
-  project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  assignee User?   @relation("task_assignee", fields: [assignee_id], references: [id], onDelete: SetNull)
-  creator  User    @relation("task_created_by", fields: [created_by], references: [id], onDelete: Restrict)
-
-  comments      Comment[]
-  activity_logs ActivityLog[]
-
-  @@index([workspace_id])
-  @@index([project_id])
-  @@index([assignee_id])
-  @@index([created_by])
-  @@index([status])
-  @@index([due_date])
-  @@index([deleted_at])
-  @@index([workspace_id, title])
-  @@index([workspace_id, deleted_at])
-  @@map("tasks")
-}
-
-model Comment {
-  id         String   @id @default(cuid())
-  task_id    String
-  user_id    String
-  content    String   @db.Text
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([task_id])
-  @@index([user_id])
-  @@index([task_id, created_at])
-  @@map("comments")
-}
-
-/// Append-only audit trail — no soft delete; deletion is not exposed in the API (PRD FR-10 / NFR-07).
-/// Rows are not removed when a task is hard-deleted (`onDelete: Restrict` on task).
-model ActivityLog {
-  id            String                @id @default(cuid())
-  task_id       String
-  user_id       String?
-  field_changed String?               @db.VarChar(128)
-  old_value     String?               @db.Text
-  new_value     String?               @db.Text
-  action_type   activity_action_type
-  created_at    DateTime              @default(now())
-
-  task Task  @relation(fields: [task_id], references: [id], onDelete: Restrict)
-  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
-
-  @@index([task_id])
-  @@index([user_id])
-  @@index([task_id, created_at])
-  @@index([action_type])
-  @@map("activity_logs")
-}
-
-model Notification {
-  id           String             @id @default(cuid())
-  user_id      String
-  type         notification_type
-  reference_id String?            @db.VarChar(128)
-  content      String?            @db.Text
-  read_at      DateTime?
-  created_at   DateTime           @default(now())
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id])
-  @@index([user_id, read_at])
-  @@index([user_id, created_at])
-  @@index([reference_id])
-  @@map("notifications")
-}
-
-model InviteToken {
-  id           String    @id @default(cuid())
-  workspace_id String
-  email        String
-  token        String    @unique
-  expires_at   DateTime
-  accepted_at  DateTime?
-  role         workspace_role @default(Member)
-  created_at   DateTime  @default(now())
-
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-
-  @@unique([workspace_id, email])
-  @@index([workspace_id])
-  @@index([email])
-  @@map("invite_tokens")
 }

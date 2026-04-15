@@ -381,7 +381,7 @@ export async function PATCH(
         await tx.activityLog.createMany({ data: logEntries });
       }
 
-      // Notify new assignee if assignee changed (FR-09 stub)
+      // Notify new assignee if assignee changed (FR-09)
       if (
         assignee_id !== undefined &&
         assignee_id !== null &&
@@ -396,6 +396,31 @@ export async function PATCH(
             content: `Bạn được assign task mới: ${updatedTask.title}`,
           },
         });
+      }
+
+      // Special case: If due_date is changed to "soon" by someone else (Manager/Admin)
+      const now = new Date();
+      const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const targetAssigneeId = assignee_id || updatedTask.assignee_id;
+
+      if (
+        due_date !== undefined &&
+        due_date !== null &&
+        updatedTask.status !== "Done" &&
+        targetAssigneeId &&
+        targetAssigneeId !== user.id
+      ) {
+        const newDue = new Date(due_date);
+        if (newDue <= in24Hours) {
+          await tx.notification.create({
+            data: {
+              user_id: targetAssigneeId,
+              type: "TaskDueSoon",
+              reference_id: id,
+              content: `Hạn hoàn thành task "${updatedTask.title}" đã được đổi sang hôm nay/ngày mai`,
+            },
+          });
+        }
       }
 
       return updatedTask;

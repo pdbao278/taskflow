@@ -165,14 +165,38 @@ export async function POST(
       });
 
       // Create notifications
-      const notificationsData = Array.from(mentionedUserIds)
-        .filter(targetId => targetId !== user.id) // Don't notify self
-        .map(targetId => ({
-          user_id: targetId,
-          type: "Mention" as const,
+      const notificationsData: any[] = [];
+
+      // 1. Mention notifications
+      mentionedUserIds.forEach(targetId => {
+        if (targetId !== user.id) {
+          notificationsData.push({
+            user_id: targetId,
+            type: "Mention",
+            reference_id: id,
+            content: `${user.name} đã mention bạn trong task "${task!.workspace_id}"`, // Simplified content for mention
+          });
+        }
+      });
+
+      // 2. TaskCommented notification for assignee
+      const taskWithAssignee = await tx.task.findUnique({
+        where: { id },
+        select: { assignee_id: true, title: true }
+      });
+
+      if (
+        taskWithAssignee?.assignee_id && 
+        taskWithAssignee.assignee_id !== user.id && 
+        !mentionedUserIds.has(taskWithAssignee.assignee_id) // Avoid duplicate if assignee was already mentioned
+      ) {
+        notificationsData.push({
+          user_id: taskWithAssignee.assignee_id,
+          type: "TaskCommented",
           reference_id: id,
-          content: `Bạn được nhắc đến trong một bình luận: "${content.substring(0, 50)}${content.length > 50 ? "..." : ""}"`,
-        }));
+          content: `${user.name} đã comment vào task của bạn: "${taskWithAssignee.title}"`,
+        });
+      }
 
       if (notificationsData.length > 0) {
         await tx.notification.createMany({

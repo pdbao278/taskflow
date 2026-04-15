@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Notification for assignee — FR-09 stub
+      // Notification for assignee (FR-09)
       if (assignee_id && assignee_id !== user.id) {
         await tx.notification.create({
           data: {
