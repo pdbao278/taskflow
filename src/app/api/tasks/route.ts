@@ -1,33 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
 // Strip all HTML tags to prevent XSS — PRD 10.1
 function sanitizeText(input: string): string {
   return input.replace(/<[^>]*>/g, "").trim();
-}
-
-/** Resolve active workspace + role for the authenticated user. */
-async function resolveWorkspace(userId: string) {
-  const cookieStore = await cookies();
-  const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
-  const prisma = getPrisma();
-
-  if (!activeWorkspaceId) return null;
-
-  const membership = await prisma.workspaceMember.findUnique({
-    where: {
-      workspace_id_user_id: {
-        workspace_id: activeWorkspaceId,
-        user_id: userId,
-      },
-    },
-  });
-
-  if (!membership) return null;
-  return { workspaceId: activeWorkspaceId, role: membership.role };
 }
 
 const createTaskSchema = z.object({
@@ -59,7 +38,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const ws = await resolveWorkspace(user.id);
+    const ws = await resolveActiveWorkspace(user.id);
     if (!ws) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy workspace đang hoạt động" },
@@ -78,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     const tasks = await prisma.task.findMany({
       where: {
-        workspace_id: ws.workspaceId,
+        workspace_id: ws.id,
         deleted_at: null,
         ...(projectId && { project_id: projectId }),
         ...(assigneeId && { assignee_id: assigneeId }),
@@ -93,7 +72,7 @@ export async function GET(req: NextRequest) {
             name: true, 
             email: true,
             workspace_members: {
-              where: { workspace_id: ws.workspaceId },
+              where: { workspace_id: ws.id },
               select: { id: true }
             }
           } 
@@ -135,7 +114,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ws = await resolveWorkspace(user.id);
+    const ws = await resolveActiveWorkspace(user.id);
     if (!ws) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy workspace đang hoạt động" },
@@ -174,7 +153,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (project.workspace_id !== ws.workspaceId) {
+    if (project.workspace_id !== ws.id) {
       return NextResponse.json(
         { success: false, error: "Project không thuộc workspace hiện tại" },
         { status: 403 }
@@ -194,7 +173,7 @@ export async function POST(req: NextRequest) {
       const assigneeMembership = await prisma.workspaceMember.findUnique({
         where: {
           workspace_id_user_id: {
-            workspace_id: ws.workspaceId,
+            workspace_id: ws.id,
             user_id: assignee_id,
           },
         },
@@ -218,7 +197,7 @@ export async function POST(req: NextRequest) {
           title: sanitizedTitle,
           description: sanitizedDescription,
           project_id,
-          workspace_id: ws.workspaceId,
+          workspace_id: ws.id,
           assignee_id: assignee_id ?? null,
           priority,
           due_date: due_date ? new Date(due_date) : null,

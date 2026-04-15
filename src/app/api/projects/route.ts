@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
 // Sanitize: strip HTML tags to prevent XSS
@@ -23,27 +23,6 @@ const createProjectSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Màu phải là hex hợp lệ (ví dụ: #3B82F6)"),
 });
 
-/** Resolve the active workspace for the authenticated user from cookie. */
-async function resolveWorkspace(userId: string) {
-  const cookieStore = await cookies();
-  const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
-  const prisma = getPrisma();
-
-  if (!activeWorkspaceId) return null;
-
-  const membership = await prisma.workspaceMember.findUnique({
-    where: {
-      workspace_id_user_id: {
-        workspace_id: activeWorkspaceId,
-        user_id: userId,
-      },
-    },
-  });
-
-  if (!membership) return null;
-  return { workspaceId: activeWorkspaceId, role: membership.role };
-}
-
 // GET /api/projects — List all projects in the active workspace
 export async function GET(req: NextRequest) {
   try {
@@ -52,7 +31,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const ws = await resolveWorkspace(user.id);
+    const ws = await resolveActiveWorkspace(user.id);
     if (!ws) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy workspace đang hoạt động" },
@@ -63,7 +42,7 @@ export async function GET(req: NextRequest) {
     const prisma = getPrisma();
 
     const projects = await prisma.project.findMany({
-      where: { workspace_id: ws.workspaceId },
+      where: { workspace_id: ws.id },
       orderBy: { created_at: "desc" },
       include: {
         _count: {
@@ -108,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const ws = await resolveWorkspace(user.id);
+    const ws = await resolveActiveWorkspace(user.id);
     if (!ws) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy workspace đang hoạt động" },
@@ -139,7 +118,7 @@ export async function POST(req: NextRequest) {
     const prisma = getPrisma();
     const project = await prisma.project.create({
       data: {
-        workspace_id: ws.workspaceId,
+        workspace_id: ws.id,
         name: sanitizeText(name),
         description: description ? sanitizeText(description) : null,
         color,

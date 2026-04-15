@@ -49,3 +49,34 @@ export async function getActiveWorkspace(userId: string) {
     }))
   };
 }
+
+/**
+ * Lightweight version of getActiveWorkspace for API routes.
+ * Returns { id, role } or null if no workspaces.
+ */
+export async function resolveActiveWorkspace(userId: string) {
+  const cookieStore = await cookies();
+  const activeWorkspaceId = cookieStore.get("active_workspace_id")?.value;
+  const prisma = getPrisma();
+
+  // Fetch all memberships for this user
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { user_id: userId },
+    select: { workspace_id: true, role: true },
+    orderBy: { created_at: "asc" },
+  });
+
+  if (memberships.length === 0) return null;
+
+  // Try to find by cookie
+  if (activeWorkspaceId) {
+    const active = memberships.find((m) => m.workspace_id === activeWorkspaceId);
+    if (active) {
+      return { id: active.workspace_id, role: active.role };
+    }
+  }
+
+  // Fallback to first
+  const first = memberships[0];
+  return { id: first.workspace_id, role: first.role };
+}

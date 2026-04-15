@@ -66,6 +66,23 @@ interface SidebarProps {
 export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
   const pathname = usePathname();
 
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const currentRole = activeWorkspace?.role || "Member";
+  const isManagerOrAdmin = currentRole === "Manager" || currentRole === "Admin";
+  const isAdmin = currentRole === "Admin";
+
+  // Filter main menu
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.href === "/app/team") return isManagerOrAdmin;
+    return true;
+  });
+
+  // Filter settings menu
+  const visibleSettingsItems = settingsItems.filter((item) => {
+    if (item.href.startsWith("/app/settings")) return isAdmin;
+    return true;
+  });
+
   return (
     <aside className="w-64 bg-white border-r border-zinc-200 flex flex-col h-screen sticky top-0 overflow-y-auto">
       {/* Workspace Switcher */}
@@ -81,7 +98,7 @@ export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
         <div>
           <h3 className="px-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">Chính</h3>
           <ul className="space-y-1">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const active = pathname === item.href;
               return (
                 <li key={item.href}>
@@ -103,30 +120,32 @@ export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
           </ul>
         </div>
 
-        <div>
-          <h3 className="px-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">Cài đặt</h3>
-          <ul className="space-y-1">
-            {settingsItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group ${
-                      active 
-                        ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                    }`}
-                  >
-                    <item.icon className={`w-4 h-4 ${active ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} />
-                    <span className="text-sm font-medium">{item.title}</span>
-                    {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        {isAdmin && (
+          <div>
+            <h3 className="px-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">Cài đặt</h3>
+            <ul className="space-y-1">
+              {visibleSettingsItems.map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group ${
+                        active 
+                          ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
+                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                      }`}
+                    >
+                      <item.icon className={`w-4 h-4 ${active ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} />
+                      <span className="text-sm font-medium">{item.title}</span>
+                      {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </nav>
 
       {/* Footer / User info could go here */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SharedKanbanBoard } from "../../_components/kanban/SharedKanbanBoard";
 import { apiFetch } from "@/lib/apiFetch";
 import { TaskCard, type TaskItem } from "../../_components/TaskCard";
@@ -14,12 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-
-
-const POLL_INTERVAL_MS = 5000;
 
 // ─── Toast types ──────────────────────────────────────────────────────────────
 
@@ -42,10 +37,10 @@ export function TeamKanbanClient({
   currentUserRole,
   currentUserId,
 }: TeamKanbanClientProps) {
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const queryClient = useQueryClient();
+
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus | undefined>(undefined);
@@ -55,12 +50,12 @@ export function TeamKanbanClient({
 
   // Filters
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [projectId, setProjectId] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("");
-
-  // Polling
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
 
   const isManagerOrAdmin =
     currentUserRole === "Manager" || currentUserRole === "Admin";
@@ -76,33 +71,16 @@ export function TeamKanbanClient({
     );
   }, []);
 
+  // ─── Debounce search 300ms ─────────────────────────────────────────────────
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // ─── Data fetching ─────────────────────────────────────────────────────────
-
-  const fetchTasks = useCallback(
-    async (silent = false) => {
-      // Không poll khi đang drag
-      if (isDragActiveRef.current) return;
-
-      if (!silent) setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (projectId) params.append("projectId", projectId);
-        if (assigneeId) params.append("assigneeId", assigneeId);
-        if (priority) params.append("priority", priority);
-
-        const res = await apiFetch(`/api/tasks?${params.toString()}`);
-        const body = await res.json();
-        if (body.success) {
-          setTasks(body.data);
-        }
-      } catch {
-        // 401 đã handled bởi apiFetch
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [projectId, assigneeId, priority]
-  );
 
   const fetchMeta = useCallback(async () => {
     try {
@@ -115,48 +93,68 @@ export function TeamKanbanClient({
     } catch {}
   }, []);
 
-  // Initial load
   useEffect(() => {
-    fetchTasks();
     fetchMeta();
-  }, [fetchTasks, fetchMeta]);
+  }, [fetchMeta]);
 
-  // 5s polling (PRD FR-08 / risk R-06)
-  useEffect(() => {
-    pollTimerRef.current = setInterval(() => {
-      fetchTasks(true); // silent = không show loading spinner
-    }, POLL_INTERVAL_MS);
+  const fetchTeamTasks = async () => {
+    const params = new URLSearchParams();
+    if (projectId) params.append("project_id", projectId);
+    if (assigneeId) params.append("assignee_id", assigneeId);
+    if (priority) params.append("priority", priority);
+    if (debouncedSearch) params.append("search", debouncedSearch);
+    if (dueFrom) params.append("due_from", dueFrom);
+    if (dueTo) params.append("due_to", dueTo);
 
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
-  }, [fetchTasks]);
+    const res = await apiFetch(`/api/tasks/team?${params.toString()}`);
+    // Handle Forbidden (403) silently mostly or let react-query fail
+    if (res.status === 403) throw new Error("Chỉ Quản lý mới có quyền xem Dashboard Team");
+    
+    const body = await res.json();
+    if (!body.success) throw new Error(body.error || "Failed to fetch tasks");
+
+    const columns = body.data?.columns;
+    const flattenedTasks: TaskItem[] = [];
+    if (columns) {
+      flattenedTasks.push(...(columns["To Do"] || []));
+      flattenedTasks.push(...(columns["In Progress"] || []));
+      flattenedTasks.push(...(columns["In Review"] || []));
+      flattenedTasks.push(...(columns["Done"] || []));
+    }
+    return flattenedTasks;
+  };
+
+  const queryKey = ["team-tasks", projectId, assigneeId, priority, debouncedSearch, dueFrom, dueTo];
+
+  const { data: tasks = [], isLoading, isFetching, refetch, isError, error } = useQuery({
+    queryKey,
+    queryFn: fetchTeamTasks,
+    refetchInterval: () => {
+      return isDragActiveRef.current ? false : 5000;
+    },
+  });
 
   // ─── Status change với optimistic UI ──────────────────────────────────────
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: TaskStatus) => {
       const task = tasks.find((t) => t.id === taskId);
-      if (!task) return;
+      if (!task || task.status === newStatus) return;
 
-      // No-op nếu status giống nhau
-      if (task.status === newStatus) return;
-
-      // Permission check (client-side guard thêm vào)
-      const canChange =
-        isManagerOrAdmin || task.assignee_id === currentUserId || task.creator?.id === currentUserId;
+      const canChange = isManagerOrAdmin || task.assignee_id === currentUserId || task.creator?.id === currentUserId;
       if (!canChange) {
         addToast("Chỉ assignee hoặc Manager mới có thể đổi trạng thái", "error");
         return;
       }
 
-      // Optimistic update
-      const prevTasks = tasks;
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId ? { ...t, status: newStatus } : t
-        )
-      );
+      // Snapshot
+      const previousTasks = queryClient.getQueryData<TaskItem[]>(queryKey);
+
+      // Optimistic upate
+      queryClient.setQueryData(queryKey, (old: TaskItem[] | undefined) => {
+        if (!old) return [];
+        return old.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t));
+      });
 
       try {
         const res = await apiFetch(`/api/tasks/${taskId}/status`, {
@@ -167,50 +165,46 @@ export function TeamKanbanClient({
         const body = await res.json();
 
         if (!body.success) {
-          // Rollback
-          setTasks(prevTasks);
+          queryClient.setQueryData(queryKey, previousTasks);
           addToast(body.error || "Có lỗi xảy ra. Thử lại?", "error");
         } else {
           addToast("Đã cập nhật trạng thái");
         }
       } catch {
-        // Rollback
-        setTasks(prevTasks);
+        queryClient.setQueryData(queryKey, previousTasks);
         addToast("Có lỗi xảy ra. Thử lại?", "error");
+      } finally {
+        queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
       }
     },
-    [tasks, isManagerOrAdmin, currentUserId, addToast]
+    [tasks, isManagerOrAdmin, currentUserId, addToast, queryClient, queryKey]
   );
-
-
 
   // ─── Task CRUD callbacks ───────────────────────────────────────────────────
 
-  const handleTaskCreated = (newTask: any) => {
-    setTasks((prev) => [newTask, ...prev]);
+  const handleTaskCreated = () => {
+    queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
   };
 
-  const handleTaskUpdated = (updatedTask: any) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === updatedTask.id ? { ...t, ...updatedTask } : t
-      )
-    );
+  const handleTaskUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
   };
 
-  const handleTaskDeleted = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  const handleTaskDeleted = () => {
+    queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
   };
-
-  // ─── Filtering ─────────────────────────────────────────────────────────────
-
-  const filteredTasks = tasks.filter(
-    (t) =>
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.project?.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   // ─── Render ────────────────────────────────────────────────────────────────
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-red-50 border border-red-200 p-8">
+        <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
+        <h3 className="text-red-900 font-semibold text-lg">Không thể truy cập dữ liệu</h3>
+        <p className="text-sm text-red-700 mt-1">{error instanceof Error ? error.message : "Đã có lỗi xảy ra."}</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -270,14 +264,33 @@ export function TeamKanbanClient({
             <option value="Urgent">Urgent</option>
           </select>
 
+          {/* Due date range */}
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dueFrom}
+              onChange={(e) => setDueFrom(e.target.value)}
+              title="Từ ngày"
+              className="px-3 py-2 text-sm border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-zinc-200 bg-white w-32"
+            />
+            <span className="text-zinc-400">-</span>
+            <input
+              type="date"
+              value={dueTo}
+              onChange={(e) => setDueTo(e.target.value)}
+              title="Đến ngày"
+              className="px-3 py-2 text-sm border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-zinc-200 bg-white w-32"
+            />
+          </div>
+
           {/* Refresh */}
           <button
-            onClick={() => fetchTasks()}
-            disabled={loading}
+            onClick={() => refetch()}
+            disabled={isFetching}
             className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
             aria-label="Làm mới danh sách task"
           >
-            <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCcw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
           </button>
         </div>
 
@@ -296,10 +309,10 @@ export function TeamKanbanClient({
       </div>
 
       <SharedKanbanBoard
-        tasks={filteredTasks}
+        tasks={tasks}
         currentUserId={currentUserId}
         currentUserRole={currentUserRole}
-        isLoading={loading}
+        isLoading={isLoading}
         onTaskClick={(t) => setSelectedTaskId(t.id)}
         onStatusChange={handleStatusChange}
         onAddTask={(status) => {
@@ -331,7 +344,7 @@ export function TeamKanbanClient({
         onDeleted={handleTaskDeleted}
       />
 
-      {/* Toast notifications (PRD 12.3 — auto-dismiss 4s) */}
+      {/* Toast notifications */}
       <div
         aria-live="polite"
         aria-label="Thông báo"
