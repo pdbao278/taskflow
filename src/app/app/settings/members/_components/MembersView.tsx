@@ -158,7 +158,8 @@ export default function MembersView({
   };
 
   const handleCopyLink = (token: string) => {
-    const link = `${window.location.origin}/invite?token=${token}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const link = `${baseUrl}/invite?token=${token}`;
     navigator.clipboard.writeText(link);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);

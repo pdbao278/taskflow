@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { TaskCard, type TaskItem } from "../TaskCard";
 import type { TaskStatus } from "./KanbanColumn";
 
@@ -63,24 +63,24 @@ export function DraggableTaskCard({
       {...(canDrag ? listeners : {})}
       {...(canDrag ? attributes : {})}
       tabIndex={canDrag ? 0 : -1}
-      className={`group relative outline-none transition-all duration-150 rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-        canDrag ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-zinc-300" : ""
+      className={`group relative outline-none transition-all duration-150 rounded-[var(--tf-radius-lg)] focus-visible:ring-2 focus-visible:ring-[var(--tf-accent)] focus-visible:ring-offset-2 ${
+        canDrag ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-[var(--tf-accent-muted)]" : ""
       } ${
         isDragging
-          ? "opacity-50 scale-[1.02] shadow-2xl ring-2 ring-blue-400/60 z-50"
+          ? "opacity-50 scale-[1.02] shadow-[var(--tf-shadow-xl)] ring-2 ring-[var(--tf-accent)]/60 z-50"
           : ""
       }`}
     >
       {/* Permission tooltip khi không có quyền */}
       {!canDrag && (
         <div 
-          className="absolute inset-0 z-10 cursor-not-allowed rounded-xl group/tooltip"
+          className="absolute inset-0 z-10 cursor-not-allowed rounded-[var(--tf-radius-lg)] group/tooltip"
           onClick={(e) => {
             e.stopPropagation();
             onClick();
           }}
         >
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-zinc-800 text-white text-[10px] font-medium px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[var(--tf-sidebar-bg)] text-white text-[10px] font-medium px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 border border-[var(--tf-sidebar-border)]">
             Chỉ assignee hoặc Manager mới có thể đổi trạng thái
           </div>
         </div>
@@ -101,7 +101,7 @@ export function DraggableTaskCard({
                 onStatusChange(task.id, e.target.value as TaskStatus)
               }
               onClick={(e) => e.stopPropagation()}
-              className="w-full pl-2 pr-7 py-1.5 text-xs border border-zinc-200 rounded-lg outline-none appearance-none bg-white focus:ring-2 focus:ring-zinc-200"
+              className="w-full pl-2 pr-7 py-1.5 text-xs border border-[var(--tf-border)] rounded-lg outline-none appearance-none bg-[var(--tf-bg-card)] focus:ring-2 focus:ring-[var(--tf-accent-muted)] focus:border-[var(--tf-accent)]"
               aria-label={`Đổi trạng thái task: ${task.title}`}
             >
               {STATUS_OPTIONS.map((opt) => (
@@ -110,7 +110,7 @@ export function DraggableTaskCard({
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--tf-text-muted)] pointer-events-none" />
           </div>
         </div>
       )}

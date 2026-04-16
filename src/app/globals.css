@@ -1,26 +1,409 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   TaskFlow Design System — "Refined Dark Luxury"
+   Inspired by Linear.app × Vercel Dashboard
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Brand Palette ──────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core surfaces */
+  --tf-bg:          #fafafa;
+  --tf-bg-subtle:   #f4f4f5;
+  --tf-bg-card:     #ffffff;
+  --tf-bg-elevated: #ffffff;
+
+  /* Sidebar / Dark surfaces */
+  --tf-sidebar-bg:       #18181b;
+  --tf-sidebar-bg-hover: #27272a;
+  --tf-sidebar-border:   #3f3f46;
+  --tf-sidebar-text:     #a1a1aa;
+  --tf-sidebar-text-active: #ffffff;
+
+  /* Brand accent — Indigo/Violet */
+  --tf-accent:        #6366f1;
+  --tf-accent-hover:  #818cf8;
+  --tf-accent-muted:  rgba(99, 102, 241, 0.12);
+  --tf-accent-subtle: rgba(99, 102, 241, 0.06);
+  --tf-accent-glow:   rgba(99, 102, 241, 0.25);
+
+  /* Secondary accent — for gradients */
+  --tf-accent2:       #8b5cf6;
+  --tf-accent2-muted: rgba(139, 92, 246, 0.12);
+
+  /* Text hierarchy */
+  --tf-text:        #18181b;
+  --tf-text-sub:    #52525b;
+  --tf-text-muted:  #a1a1aa;
+  --tf-text-dim:    #d4d4d8;
+
+  /* Borders */
+  --tf-border:        #e4e4e7;
+  --tf-border-subtle: #f4f4f5;
+  --tf-border-hover:  #d4d4d8;
+
+  /* Shadows */
+  --tf-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --tf-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --tf-shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  --tf-shadow-xl: 0 20px 60px rgba(0,0,0,0.1);
+  --tf-shadow-glow: 0 0 20px var(--tf-accent-glow);
+  --tf-shadow-card-hover: 0 8px 25px rgba(0,0,0,0.08), 0 0 0 1px var(--tf-border-hover);
+
+  /* Status colors */
+  --tf-status-todo:       #71717a;
+  --tf-status-inprogress: #3b82f6;
+  --tf-status-inreview:   #a855f7;
+  --tf-status-done:       #22c55e;
+
+  /* Priority colors */
+  --tf-priority-low:    #38bdf8;
+  --tf-priority-medium: #f59e0b;
+  --tf-priority-high:   #f97316;
+  --tf-priority-urgent: #ef4444;
+
+  /* Semantic */
+  --tf-success:      #22c55e;
+  --tf-success-muted: rgba(34, 197, 94, 0.1);
+  --tf-warning:      #f59e0b;
+  --tf-warning-muted: rgba(245, 158, 11, 0.1);
+  --tf-error:        #ef4444;
+  --tf-error-muted:  rgba(239, 68, 68, 0.1);
+  --tf-info:         #3b82f6;
+  --tf-info-muted:   rgba(59, 130, 246, 0.1);
+
+  /* Radii */
+  --tf-radius-sm: 6px;
+  --tf-radius-md: 10px;
+  --tf-radius-lg: 14px;
+  --tf-radius-xl: 20px;
+  --tf-radius-full: 9999px;
+
+  /* Transitions */
+  --tf-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-duration-fast: 150ms;
+  --tf-duration-normal: 250ms;
+  --tf-duration-slow: 400ms;
 }
 
+/* ─── Tailwind Theme Integration ─────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--tf-bg);
+  --color-foreground: var(--tf-text);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-sora);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base Styles ────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tf-border) transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--tf-bg);
+  color: var(--tf-text);
+  font-family: var(--font-dm-sans), 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sora), 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--tf-accent-muted);
+  color: var(--tf-accent);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tf-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tf-text-muted);
+}
+
+/* Focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--tf-accent);
+  outline-offset: 2px;
+  border-radius: var(--tf-radius-sm);
+}
+
+/* ─── Keyframe Animations ────────────────────────────────────────────────── */
+@keyframes tf-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes tf-fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tf-fade-in-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tf-slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tf-slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tf-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes tf-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes tf-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+@keyframes tf-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes tf-glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px var(--tf-accent-glow); }
+  50%      { box-shadow: 0 0 24px var(--tf-accent-glow); }
+}
+@keyframes tf-spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes tf-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Animation Utilities ────────────────────────────────────────────────── */
+.tf-animate-in {
+  animation: tf-fade-in-up 0.5s var(--tf-ease) both;
+}
+.tf-animate-in-fast {
+  animation: tf-fade-in-up 0.3s var(--tf-ease) both;
+}
+.tf-animate-fade {
+  animation: tf-fade-in 0.4s var(--tf-ease) both;
+}
+.tf-animate-scale {
+  animation: tf-scale-in 0.3s var(--tf-ease) both;
+}
+.tf-animate-slide-right {
+  animation: tf-slide-in-right 0.4s var(--tf-ease) both;
+}
+.tf-animate-slide-left {
+  animation: tf-slide-in-left 0.4s var(--tf-ease) both;
+}
+.tf-animate-float {
+  animation: tf-float 4s ease-in-out infinite;
+}
+.tf-animate-shimmer {
+  background: linear-gradient(90deg, var(--tf-bg-subtle) 25%, var(--tf-bg-card) 50%, var(--tf-bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: tf-shimmer 1.8s ease-in-out infinite;
+}
+.tf-animate-gradient {
+  background-size: 200% 200%;
+  animation: tf-gradient-shift 6s ease infinite;
+}
+
+/* Staggered delays for list items */
+.tf-stagger-1 { animation-delay: 0.05s; }
+.tf-stagger-2 { animation-delay: 0.10s; }
+.tf-stagger-3 { animation-delay: 0.15s; }
+.tf-stagger-4 { animation-delay: 0.20s; }
+.tf-stagger-5 { animation-delay: 0.25s; }
+.tf-stagger-6 { animation-delay: 0.30s; }
+
+/* ─── Card & Surface Utilities ───────────────────────────────────────────── */
+.tf-card {
+  background: var(--tf-bg-card);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  box-shadow: var(--tf-shadow-sm);
+  transition: all var(--tf-duration-normal) var(--tf-ease);
+}
+.tf-card:hover {
+  border-color: var(--tf-border-hover);
+  box-shadow: var(--tf-shadow-card-hover);
+  transform: translateY(-2px);
+}
+.tf-card-flat {
+  background: var(--tf-bg-card);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+}
+.tf-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.tf-glass-dark {
+  background: rgba(24, 24, 27, 0.85);
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  border: 1px solid rgba(63, 63, 70, 0.5);
+}
+
+/* ─── Button Utilities ───────────────────────────────────────────────────── */
+.tf-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--tf-accent), var(--tf-accent2));
+  border-radius: var(--tf-radius-md);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: all var(--tf-duration-fast) var(--tf-ease);
+}
+.tf-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.tf-btn-primary:active {
+  transform: translateY(0);
+}
+.tf-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tf-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--tf-text);
+  background: var(--tf-bg-card);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-md);
+  cursor: pointer;
+  transition: all var(--tf-duration-fast) var(--tf-ease);
+}
+.tf-btn-secondary:hover {
+  border-color: var(--tf-border-hover);
+  background: var(--tf-bg-subtle);
+  transform: translateY(-1px);
+  box-shadow: var(--tf-shadow-sm);
+}
+
+/* ─── Input Utilities ────────────────────────────────────────────────────── */
+.tf-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--tf-text);
+  background: var(--tf-bg-card);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-md);
+  outline: none;
+  transition: all var(--tf-duration-fast) var(--tf-ease);
+}
+.tf-input:focus {
+  border-color: var(--tf-accent);
+  box-shadow: 0 0 0 3px var(--tf-accent-muted);
+}
+.tf-input::placeholder {
+  color: var(--tf-text-dim);
+}
+
+/* ─── Badge Utilities ────────────────────────────────────────────────────── */
+.tf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: var(--tf-radius-full);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ─── Auth Pages Background ──────────────────────────────────────────────── */
+.tf-auth-bg {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 30%, #0d0d2b 60%, #131338 100%);
+  position: relative;
+  overflow: hidden;
+}
+.tf-auth-bg::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.tf-auth-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ─── Mesh Gradient Orbs (for auth pages) ────────────────────────────────── */
+.tf-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.6;
+}
+.tf-orb-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3), transparent 70%);
+  top: -20%;
+  right: -10%;
+  animation: tf-float 8s ease-in-out infinite;
+}
+.tf-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25), transparent 70%);
+  bottom: -15%;
+  left: -5%;
+  animation: tf-float 10s ease-in-out infinite reverse;
+}
+.tf-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation: tf-float 12s ease-in-out infinite;
 }

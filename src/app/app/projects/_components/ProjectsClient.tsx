@@ -11,9 +11,10 @@ import {
   Briefcase,
   CheckCircle2,
   Archive,
-  Loader2,
   RefreshCcw,
 } from "lucide-react";
+import { ProjectCardSkeleton } from "@/app/components/SkeletonLoaders";
+import { useToastStore } from "@/lib/toast";
 
 type Project = {
   id: string;
@@ -26,51 +27,9 @@ type Project = {
   workspace_id: string;
 };
 
-type Toast = { id: number; type: "success" | "error"; message: string };
-
 interface ProjectsClientProps {
   workspaceId: string;
   currentUserRole: string;
-}
-
-function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
-  return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border animate-fade-in-up ${
-            t.type === "success"
-              ? "bg-white border-emerald-200 text-emerald-700"
-              : "bg-white border-red-200 text-red-600"
-          }`}
-          onClick={() => onDismiss(t.id)}
-        >
-          {t.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          ) : (
-            <span className="w-4 h-4 shrink-0 text-red-500">✕</span>
-          )}
-          {t.message}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ProjectCardSkeleton() {
-  return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-5 animate-pulse">
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-3 h-3 rounded-full bg-zinc-200 mt-1 shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-zinc-200 rounded w-3/4" />
-          <div className="h-3 bg-zinc-100 rounded w-1/2" />
-        </div>
-      </div>
-      <div className="h-3 bg-zinc-100 rounded w-1/3 mt-4" />
-    </div>
-  );
 }
 
 export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientProps) {
@@ -80,22 +39,11 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
   const [modalOpen, setModalOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const { addToast } = useToastStore();
 
   const showLoading = useLoadingDelay(loading);
 
-
   const canMutate = currentUserRole === "Admin" || currentUserRole === "Manager";
-
-  const addToast = useCallback((type: "success" | "error", message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
-
-  const dismissToast = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
 
   const fetchProjects = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -134,7 +82,7 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
       // Optimistic: prepend new project
       setProjects((prev) => [body.data, ...prev]);
       setModalOpen(false);
-      addToast("success", "Project đã tạo thành công");
+      addToast("Project đã tạo thành công", "success");
     } catch {
       setFormError("Có lỗi xảy ra, vui lòng thử lại");
     } finally {
@@ -148,16 +96,16 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
   return (
     <>
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 tf-animate-fade">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-[var(--tf-text-sub)] font-medium">
             {showLoading ? "Đang tải..." : `${activeProjects.length} dự án đang hoạt động`}
           </span>
 
           <button
             onClick={() => fetchProjects(true)}
             disabled={refreshing}
-            className="p-1.5 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+            className="p-1.5 text-[var(--tf-text-muted)] hover:text-[var(--tf-text)] hover:bg-[var(--tf-bg-subtle)] rounded-md transition-colors"
             title="Làm mới"
           >
             <RefreshCcw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -171,7 +119,7 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
               setFormError("");
               setModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 bg-zinc-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900"
+            className="tf-btn-primary"
           >
             <Plus className="w-4 h-4" />
             Tạo project
@@ -181,8 +129,7 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
 
       {/* Loading skeletons */}
       {showLoading && (
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 tf-animate-in">
           {Array.from({ length: 6 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
@@ -191,14 +138,14 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
 
       {/* Empty state */}
       {!loading && projects.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 bg-zinc-100 rounded-2xl flex items-center justify-center mb-4">
-            <Briefcase className="w-8 h-8 text-zinc-400" />
+        <div className="flex flex-col items-center justify-center py-24 text-center tf-card tf-animate-in">
+          <div className="w-16 h-16 bg-[var(--tf-bg-subtle)] rounded-2xl flex items-center justify-center mb-4">
+            <Briefcase className="w-8 h-8 text-[var(--tf-text-muted)]" />
           </div>
-          <h3 className="text-base font-semibold text-zinc-900 mb-1">
+          <h3 className="text-base font-semibold text-[var(--tf-text)] mb-1">
             Chưa có project nào
           </h3>
-          <p className="text-sm text-zinc-500 max-w-xs">
+          <p className="text-sm text-[var(--tf-text-sub)] max-w-xs">
             {canMutate
               ? "Tạo project đầu tiên của bạn để bắt đầu quản lý công việc theo dự án."
               : "Workspace này chưa có dự án nào. Liên hệ Admin hoặc Manager để tạo dự án."}
@@ -209,7 +156,7 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
                 setFormError("");
                 setModalOpen(true);
               }}
-              className="mt-5 inline-flex items-center gap-2 bg-zinc-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+              className="mt-6 tf-btn-primary"
             >
               <Plus className="w-4 h-4" />
               Tạo project đầu tiên
@@ -220,25 +167,25 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
 
       {/* Active projects grid */}
       {!loading && activeProjects.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {activeProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 tf-animate-fade">
+          {activeProjects.map((project, i) => (
+            <ProjectCard key={project.id} project={project} index={i} />
           ))}
         </div>
       )}
 
       {/* Archived projects */}
       {!loading && archivedProjects.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Archive className="w-4 h-4 text-zinc-400" />
-            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
+        <div className="tf-animate-fade">
+          <div className="flex items-center gap-2 mb-4">
+            <Archive className="w-4 h-4 text-[var(--tf-text-muted)]" />
+            <h2 className="text-xs font-bold text-[var(--tf-text-sub)] uppercase tracking-[0.1em]">
               Đã archive ({archivedProjects.length})
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70">
-            {archivedProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 opacity-60 hover:opacity-100 transition-opacity duration-300">
+            {archivedProjects.map((project, i) => (
+              <ProjectCard key={project.id} project={project} index={i} />
             ))}
           </div>
         </div>
@@ -253,23 +200,11 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
         error={formError}
         mode="create"
       />
-
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up {
-          animation: fade-in-up 0.2s ease-out;
-        }
-      `}</style>
     </>
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   const isArchived = !!project.archived_at;
   const progress =
     project.total_tasks > 0
@@ -279,34 +214,30 @@ function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/app/projects/${project.id}`}
-      className={`group block bg-white rounded-xl border transition-all hover:shadow-md hover:-translate-y-0.5 ${
-        isArchived
-          ? "border-zinc-200 cursor-default"
-          : "border-zinc-200 hover:border-zinc-300"
+      className={`group block tf-card tf-animate-in ${
+        isArchived ? "cursor-default" : ""
       }`}
+      style={{ animationDelay: `${index * 0.05}s` }}
     >
-      <div className="p-5">
+      <div className="p-6">
         {/* Color dot + name */}
-        <div className="flex items-start gap-3 mb-3">
+        <div className="flex items-start gap-4 mb-4">
           <span
-            className="mt-1 w-3 h-3 rounded-full shrink-0 ring-2 ring-offset-1"
-            style={{
-              backgroundColor: project.color,
-              borderColor: project.color + "40", // Fallback if needed
-            } as any}
+            className="mt-1 w-3.5 h-3.5 rounded-md shrink-0 shadow-sm"
+            style={{ backgroundColor: project.color }}
           />
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">
+            <h3 className="text-[15px] font-bold text-[var(--tf-text)] truncate group-hover:text-[var(--tf-accent)] transition-colors">
               {project.name}
             </h3>
             {project.description && (
-              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
+              <p className="text-xs text-[var(--tf-text-sub)] mt-1 line-clamp-2 leading-relaxed">
                 {project.description}
               </p>
             )}
           </div>
           {isArchived && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">
+            <span className="shrink-0 tf-badge bg-[var(--tf-bg-subtle)] text-[var(--tf-text-muted)] border border-[var(--tf-border)]">
               <Archive className="w-2.5 h-2.5" />
               Archived
             </span>
@@ -314,17 +245,17 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
 
         {/* Task stats */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-zinc-500 mb-1.5">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+        <div className="mt-6 pt-4 border-t border-[var(--tf-border-subtle)]">
+          <div className="flex items-center justify-between text-xs text-[var(--tf-text-sub)] mb-2 font-medium">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--tf-success)]" />
               {project.completed_tasks}/{project.total_tasks} tasks
             </span>
-            <span className="font-medium">{progress}%</span>
+            <span>{progress}%</span>
           </div>
-          <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-[var(--tf-bg-subtle)] rounded-full h-2 overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
             <div
-              className="h-full rounded-full transition-all duration-500"
+              className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
                 width: `${progress}%`,
                 backgroundColor: project.color,

@@ -51,18 +51,18 @@ export function KanbanColumn({
       ref={setNodeRef}
       className={`flex flex-col min-h-[400px] rounded-2xl p-2 transition-all duration-300 border-2 ${
         isOverColumn 
-          ? "bg-emerald-50/60 border-emerald-400 ring-4 ring-emerald-400/10 scale-[1.01] z-20 shadow-lg" 
-          : "bg-transparent border-transparent focus-within:border-emerald-200 focus-within:bg-emerald-50/20"
+          ? "bg-[var(--tf-accent-subtle)] border-[var(--tf-accent)] ring-4 ring-[var(--tf-accent-muted)] scale-[1.01] z-20 shadow-lg" 
+          : "bg-transparent border-transparent focus-within:border-[var(--tf-border)] focus-within:bg-[var(--tf-bg-subtle)]"
       }`}
     >
       {/* Column header */}
       <div className="flex items-center justify-between mb-4 px-2">
         <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
-          <h3 className="text-sm font-bold text-zinc-600 uppercase tracking-wider">
+          <span className={`w-2.5 h-2.5 rounded-full`} style={{ backgroundColor: dotColor }} />
+          <h3 className="text-[11px] font-extrabold text-[var(--tf-text-sub)] uppercase tracking-[0.1em]">
             {label}
           </h3>
-          <span className="text-[11px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold text-[var(--tf-text-sub)] bg-[var(--tf-border)] px-2 py-0.5 rounded-full">
             {tasks.length}
           </span>
         </div>
@@ -71,7 +71,7 @@ export function KanbanColumn({
       {/* Drop zone container */}
       <div
         className={`flex-1 flex flex-col space-y-3 min-h-[300px] rounded-xl transition-colors ${
-          isOverColumn ? "" : "bg-zinc-50/50"
+          isOverColumn ? "" : "bg-[var(--tf-bg-subtle)] bg-opacity-50"
         }`}
       >
         {isLoading ? (
@@ -102,21 +102,21 @@ export function KanbanColumn({
           <div
             className={`flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl transition-all duration-200 ${
               isOverColumn
-                ? "border-emerald-300 bg-emerald-100/20 scale-[1.02] shadow-sm"
-                : "border-zinc-200 bg-white/50"
+                ? "border-[var(--tf-accent)] bg-[var(--tf-accent-subtle)] scale-[1.02] shadow-sm"
+                : "border-[var(--tf-border)] bg-[var(--tf-bg-card)]"
             }`}
           >
             {isDragActive ? (
-              <p className="text-xs font-medium text-emerald-600 animate-pulse">
+              <p className="text-xs font-medium text-[var(--tf-accent)] tf-animate-pulse-soft">
                 Thả task vào đây
               </p>
             ) : (
               <div className="flex flex-col items-center text-center px-4">
-                <p className="text-[11px] font-medium text-zinc-400">
+                <p className="text-[11px] font-medium text-[var(--tf-text-muted)]">
                   Chưa có task nào
                 </p>
                 {onAddTask && (
-                  <p className="text-[10px] text-zinc-300 mt-1">
+                  <p className="text-[10px] text-[var(--tf-text-dim)] mt-1">
                     Nhấn nút bên dưới để thêm
                   </p>
                 )}
@@ -129,9 +129,9 @@ export function KanbanColumn({
         {onAddTask && (
           <button
             onClick={onAddTask}
-            className="w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg border border-dashed border-transparent hover:border-zinc-200 transition-all mt-auto"
+            className="w-full py-2.5 flex items-center justify-center gap-2 text-xs font-medium text-[var(--tf-text-muted)] hover:text-[var(--tf-accent)] hover:bg-[var(--tf-bg-card)] rounded-lg border border-dashed border-transparent hover:border-[var(--tf-accent-muted)] transition-all mt-auto"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             Thêm task
           </button>
         )}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, CheckCircle2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { TaskFormPanel, type CreatedTask } from "./TaskFormPanel";
+import { useToastStore } from "@/lib/toast";
 
 interface NewTaskButtonProps {
   /** Called with the newly created task so parent can refresh lists */
@@ -11,17 +12,14 @@ interface NewTaskButtonProps {
 
 export function NewTaskButton({ onCreated }: NewTaskButtonProps) {
   const [open, setOpen] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState("");
+  const { addToast } = useToastStore();
 
   const handleCreated = useCallback(
     (task: CreatedTask) => {
-      setToastMsg("Task đã tạo thành công");
-      setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 4000);
+      addToast("Task đã tạo thành công", "success");
       onCreated?.(task);
     },
-    [onCreated]
+    [onCreated, addToast]
   );
 
   return (
@@ -30,7 +28,7 @@ export function NewTaskButton({ onCreated }: NewTaskButtonProps) {
       <button
         id="btn-new-task-global"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-all focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 shadow-sm"
+        className="tf-btn-primary w-full"
         aria-label="Tạo task mới"
       >
         <Plus className="w-4 h-4" />
@@ -43,24 +41,6 @@ export function NewTaskButton({ onCreated }: NewTaskButtonProps) {
         onClose={() => setOpen(false)}
         onCreated={handleCreated}
       />
-
-      {/* Global success toast (4s auto-dismiss — AGENTS.md) */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
-        {toastVisible && (
-          <div className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border bg-white border-emerald-200 text-emerald-700 animate-fade-in-up">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            {toastMsg}
-          </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up { animation: fade-in-up 0.2s ease-out; }
-      `}</style>
     </>
   );
 }

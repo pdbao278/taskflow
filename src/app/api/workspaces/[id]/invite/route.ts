@@ -29,6 +29,14 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const { email, role } = result.data;
     const prisma = getPrisma();
 
+    // Map role to Vietnamese label
+    const roleLabels: Record<string, string> = {
+      Admin: "Quản trị viên",
+      Manager: "Quản lý",
+      Member: "Thành viên",
+    };
+    const roleLabel = roleLabels[role] || role;
+
     // Verify user is Admin of the workspace
     const membership = await prisma.workspaceMember.findUnique({
       where: {
@@ -84,35 +92,39 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const brevoApiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@taskflow.app";
     const senderName = process.env.BREVO_SENDER_NAME || "TaskFlow";
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || 'http://localhost:3000'}/invite?token=${token}`;
     
-    console.log(`[Email Debug] API Key exists: ${!!brevoApiKey}`);
-    console.log(`[Email Debug] Sender: ${senderName} <${senderEmail}>`);
-    console.log(`[Email Debug] To: ${email}`);
-    console.log(`[Email Debug] URL: ${inviteUrl}`);
-
+    // Ưu tiên dùng NEXT_PUBLIC_APP_URL cho các môi trường deploy (Vercel)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || 'http://localhost:3000';
+    const inviteUrl = `${baseUrl}/invite?token=${token}`;
+    
     if (brevoApiKey) {
       const brevo = new BrevoClient({ apiKey: brevoApiKey });
       
       try {
-        const response = await brevo.transactionalEmails.sendTransacEmail({
+        await brevo.transactionalEmails.sendTransacEmail({
           subject: `Lời mời tham gia workspace ${membership.workspace.name}`,
           sender: { name: senderName, email: senderEmail },
           to: [{ email: email }],
           htmlContent: `
-            <p>Xin chào,</p>
-            <p>Bạn được mời tham gia workspace <strong>${membership.workspace.name}</strong> trên TaskFlow.</p>
-            <p>Nhấn vào link dưới đây để tham gia (Link có hiệu lực 48 giờ):</p>
-            <p><a href="${inviteUrl}">${inviteUrl}</a></p>
+            <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+              <h2>Chào bạn,</h2>
+              <p>Bạn được mời tham gia vào workspace <strong>${membership.workspace.name}</strong> trên hệ thống <b>TaskFlow</b>.</p>
+              <p>📍 Vai trò của bạn: <strong>${roleLabel}</strong></p>
+              <p>Vui lòng nhấn vào nút dưới đây để chấp nhận lời mời (Link có hiệu lực trong 48 giờ):</p>
+              <div style="margin: 30px 0;">
+                <a href="${inviteUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Tham gia ngay</a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+              <p style="font-size: 12px; color: #999;">Nếu bạn không yêu cầu lời mời này, vui lòng bỏ qua email.</p>
+            </div>
           `,
         });
-        console.log("[Email Debug] Brevo Response:", response);
       } catch (brevoError: any) {
         console.error("Brevo error:", brevoError);
         return NextResponse.json({ success: false, error: "Lỗi khi gửi email qua Brevo. Vui lòng kiểm tra lại cấu hình." }, { status: 500 });
       }
     } else {
-      console.log(`[Mock Email] To: ${email}, Link: ${inviteUrl}`);
+      console.log(`[Mock Email] To: ${email}, Role: ${roleLabel}, Link: ${inviteUrl}`);
     }
 
     return NextResponse.json({ success: true, data: { message: "Đã gửi lời mời" } });

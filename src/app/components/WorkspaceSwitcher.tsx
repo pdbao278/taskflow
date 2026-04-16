@@ -4,10 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { 
   ChevronDown, 
   Plus, 
-  Settings, 
-  Check, 
-  Building2,
-  MoreVertical
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/apiFetch";
@@ -65,41 +62,49 @@ export function WorkspaceSwitcher({ workspaces, activeWorkspaceId }: WorkspaceSw
     }
   };
 
+  const roleColors: Record<string, string> = {
+    Admin: "text-indigo-400",
+    Manager: "text-purple-400",
+    Member: "text-white/40",
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Trigger Header */}
+      {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full flex items-center gap-3 p-3 rounded-xl transition-all border border-transparent",
-          isOpen ? "bg-zinc-50 border-zinc-200" : "hover:bg-zinc-50/80"
+          "w-full flex items-center gap-3 p-2.5 rounded-xl transition-all",
+          isOpen ? "bg-white/[0.06]" : "hover:bg-white/[0.04]"
         )}
       >
-        <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-zinc-900 flex items-center justify-center text-white font-bold shadow-lg shadow-zinc-200">
+        <div className="h-9 w-9 flex-shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-indigo-500/20">
           {activeWorkspace?.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <h2 className="text-sm font-semibold text-zinc-900 truncate">
+          <h2 className="text-[13px] font-semibold text-white truncate">
             {activeWorkspace?.name}
           </h2>
-          <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">
+          <p className={cn("text-[10px] font-medium uppercase tracking-wider", roleColors[activeWorkspace?.role || "Member"])}>
             {activeWorkspace?.role}
           </p>
         </div>
         <ChevronDown className={cn(
-          "w-4 h-4 text-zinc-400 transition-transform duration-200",
+          "w-4 h-4 text-white/20 transition-transform duration-200",
           isOpen && "rotate-180"
         )} />
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-xl shadow-xl shadow-zinc-200/50 z-50 py-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute left-0 right-0 top-full mt-2 bg-[#1e1e24] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/40 z-50 py-2 tf-animate-scale">
           <div className="px-3 py-2 mb-1">
-            <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest px-2">Workspaces của bạn</h3>
+            <h3 className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.15em] px-2">
+              Workspaces
+            </h3>
           </div>
 
-          <div className="max-h-64 overflow-y-auto px-2 space-y-1">
+          <div className="max-h-64 overflow-y-auto px-2 space-y-0.5">
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
@@ -107,32 +112,40 @@ export function WorkspaceSwitcher({ workspaces, activeWorkspaceId }: WorkspaceSw
                 className={cn(
                   "w-full flex items-center gap-3 p-2 rounded-lg transition-all",
                   ws.id === activeWorkspaceId 
-                    ? "bg-zinc-50 border border-zinc-100" 
-                    : "hover:bg-zinc-50 text-zinc-600 hover:text-zinc-900"
+                    ? "bg-indigo-500/10" 
+                    : "hover:bg-white/[0.04] text-white/50 hover:text-white/80"
                 )}
               >
-                <div className="h-8 w-8 flex-shrink-0 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-600 font-bold text-xs">
+                <div className={cn(
+                  "h-7 w-7 flex-shrink-0 rounded-lg flex items-center justify-center font-bold text-[10px]",
+                  ws.id === activeWorkspaceId
+                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white"
+                    : "bg-white/[0.06] text-white/40"
+                )}>
                   {ws.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium truncate">{ws.name}</p>
-                  <p className="text-[10px] text-zinc-400">{ws.role}</p>
+                  <p className={cn(
+                    "text-[13px] font-medium truncate",
+                    ws.id === activeWorkspaceId ? "text-white" : ""
+                  )}>{ws.name}</p>
+                  <p className="text-[10px] text-white/25">{ws.role}</p>
                 </div>
                 {ws.id === activeWorkspaceId && (
-                  <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                 )}
               </button>
             ))}
           </div>
 
-          <div className="mt-3 pt-2 border-t border-zinc-100 px-2">
+          <div className="mt-2 pt-2 border-t border-white/[0.06] px-2">
             <Link
               href="/app/workspaces/new"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 p-2 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all"
+              className="flex items-center gap-3 p-2 rounded-lg text-[13px] font-medium text-white/30 hover:bg-white/[0.04] hover:text-white/60 transition-all"
             >
-              <div className="h-8 w-8 flex-shrink-0 rounded-lg border-2 border-dashed border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:border-zinc-300">
-                <Plus className="w-4 h-4" />
+              <div className="h-7 w-7 flex-shrink-0 rounded-lg border border-dashed border-white/10 flex items-center justify-center text-white/20">
+                <Plus className="w-3.5 h-3.5" />
               </div>
               <span>Tạo Workspace mới</span>
             </Link>

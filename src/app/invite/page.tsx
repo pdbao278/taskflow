@@ -21,7 +21,7 @@ export default async function InvitePage(props: { searchParams: Promise<{ token?
 
   if (!user) {
     // If not logged in, redirect to login but carry the token
-    const loginUrl = new URL("/login", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+    const loginUrl = new URL("/login", process.env.NEXT_PUBLIC_APP_URL || "https://taskflow-lalaboys-projects.vercel.app");
     loginUrl.searchParams.set("redirect", `/invite?token=${token}`);
     loginUrl.searchParams.set("message", "Vui lòng đăng nhập để tham gia workspace.");
     redirect(loginUrl.toString());

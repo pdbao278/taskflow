@@ -11,7 +11,6 @@ export type TaskItem = {
   status: "ToDo" | "InProgress" | "InReview" | "Done";
   priority: "Low" | "Medium" | "High" | "Urgent";
   due_date: string | null;
-  /** Denormalized để check permission drag-drop mà không cần lookup thêm */
   assignee_id: string | null;
   assignee: { id: string | null; name: string; email: string | null } | null;
   creator: { id: string; name: string; email: string };
@@ -27,10 +26,10 @@ interface TaskCardProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PRIORITY_STYLES: Record<string, string> = {
-  Low:    "text-sky-600 bg-sky-50 border-sky-200",
-  Medium: "text-amber-600 bg-amber-50 border-amber-200",
-  High:   "text-orange-600 bg-orange-50 border-orange-200",
-  Urgent: "text-red-600 bg-red-50 border-red-200",
+  Low:    "text-[var(--tf-info)] bg-[var(--tf-info-muted)] border-[var(--tf-info-muted)]",
+  Medium: "text-[var(--tf-warning)] bg-[var(--tf-warning-muted)] border-[var(--tf-warning-muted)]",
+  High:   "text-[var(--tf-priority-high)] bg-[var(--tf-priority-high)]/10 border-[var(--tf-priority-high)]/20",
+  Urgent: "text-[var(--tf-error)] bg-[var(--tf-error-muted)] border-[var(--tf-error-muted)]",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -41,10 +40,10 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  ToDo:       "text-zinc-600 bg-zinc-100",
-  InProgress: "text-blue-600 bg-blue-50",
-  InReview:   "text-purple-600 bg-purple-50",
-  Done:       "text-emerald-600 bg-emerald-50",
+  ToDo:       "text-[var(--tf-text-sub)] bg-[var(--tf-bg-subtle)]",
+  InProgress: "text-[var(--tf-status-inprogress)] bg-[var(--tf-status-inprogress)]/10",
+  InReview:   "text-[var(--tf-status-inreview)] bg-[var(--tf-status-inreview)]/10",
+  Done:       "text-[var(--tf-success)] bg-[var(--tf-success-muted)]",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,6 +51,14 @@ const STATUS_LABELS: Record<string, string> = {
   InProgress: "In Progress",
   InReview:   "In Review",
   Done:       "Done",
+};
+
+// Priority border map for the left accent edge
+const PRIORITY_BORDER: Record<string, string> = {
+  Low:    "var(--tf-info)",
+  Medium: "var(--tf-warning)",
+  High:   "var(--tf-priority-high)",
+  Urgent: "var(--tf-error)",
 };
 
 function isOverdue(dateStr: string | null | undefined): boolean {
@@ -85,66 +92,77 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     <button
       type="button"
       onClick={() => onClick?.(task)}
-      className="group w-full text-left bg-white rounded-xl border border-zinc-200 hover:border-zinc-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1"
+      className="group w-full text-left relative overflow-hidden bg-[var(--tf-bg-card)] rounded-[var(--tf-radius-lg)] border border-[var(--tf-border)] hover:border-[var(--tf-border-hover)] hover:shadow-card-hover transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tf-accent)]"
+      style={{
+        boxShadow: "var(--tf-shadow-sm)"
+      }}
     >
+      {/* Accent edge based on Priority */}
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ backgroundColor: PRIORITY_BORDER[task.priority] }}
+      />
+
       <div className="p-4">
-        {/* Project color bar (when shown without project context) */}
+        {/* Project Context (if available) */}
         {task.project && (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2.5">
             <span
-              className="w-2 h-2 rounded-full shrink-0"
+              className="w-1.5 h-1.5 rounded-full shrink-0"
               style={{ backgroundColor: task.project.color }}
             />
-            <span className="text-sm font-bold text-zinc-600 truncate">Dự án: {task.project.name}</span>
+            <span className="text-[11px] font-bold text-[var(--tf-text-sub)] tracking-wide uppercase">
+              {task.project.name}
+            </span>
           </div>
         )}
 
         {/* Title */}
-        <p className="text-sm font-semibold text-zinc-900 leading-snug group-hover:text-blue-600 transition-colors mb-2 line-clamp-2">
+        <p className="text-sm font-semibold text-[var(--tf-text)] leading-snug group-hover:text-[var(--tf-accent)] transition-colors mb-4 line-clamp-2">
           {task.title}
         </p>
 
-        {/* Badges row */}
+        {/* Badges Row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Status */}
+          {/* Status Badge */}
           <span
-            className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[task.status]}`}
+            className={`tf-badge ${STATUS_STYLES[task.status]}`}
           >
             {STATUS_LABELS[task.status]}
           </span>
 
-          {/* Priority */}
+          {/* Priority Badge */}
           <span
-            className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_STYLES[task.priority]}`}
+            className={`tf-badge border ${PRIORITY_STYLES[task.priority]}`}
           >
             {PRIORITY_LABELS[task.priority]}
           </span>
 
-          {/* Overdue badge — PRD 10.1 */}
+          {/* Overdue Badge */}
           {overdue && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm shadow-red-200/50">
+            <span className="tf-badge bg-[var(--tf-error)] text-white shadow-sm shadow-[var(--tf-error-muted)]/50">
               <AlertCircle className="w-2.5 h-2.5" />
               Overdue
             </span>
           )}
         </div>
 
-        {/* Footer: assignee + due date */}
-        <div className="mt-3 pt-3 border-t border-zinc-100 flex items-center justify-between gap-2">
+        {/* Footer */}
+        <div className="mt-4 pt-4 border-t border-[var(--tf-border-subtle)] flex items-center justify-between gap-2">
           {/* Assignee */}
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             {task.assignee && task.assignee.id ? (
               <>
                 <div
-                  className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                  className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 border border-indigo-500/10 flex items-center justify-center text-[10px] font-extrabold text-indigo-600 shrink-0 shadow-sm"
                   title={task.assignee.name}
                 >
                   {getInitials(task.assignee.name)}
                 </div>
-                <span className="text-xs text-zinc-500 truncate">{task.assignee.name}</span>
+                <span className="text-xs font-medium text-[var(--tf-text-sub)] truncate">{task.assignee.name}</span>
               </>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-zinc-400 italic">
+              <span className="inline-flex items-center gap-1.5 text-xs text-[var(--tf-text-muted)] italic">
                 <User className="w-3 h-3" />
                 {task.assignee?.name === "[Removed User]"
                   ? "[Removed User]"
@@ -156,8 +174,8 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           {/* Due date */}
           {task.due_date && (
             <div
-              className={`flex items-center gap-1 text-xs shrink-0 ${
-                overdue ? "text-red-600 font-semibold" : "text-zinc-400"
+              className={`flex items-center gap-1.5 text-[11px] shrink-0 px-2 py-1 rounded-md ${
+                overdue ? "bg-[var(--tf-error-muted)] text-[var(--tf-error)] font-bold" : "bg-[var(--tf-bg-subtle)] text-[var(--tf-text-sub)] font-medium"
               }`}
             >
               <CalendarDays className="w-3 h-3" />

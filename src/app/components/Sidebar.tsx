@@ -8,7 +8,6 @@ import {
   Settings,
   Users,
   Briefcase,
-  ChevronRight,
   FolderKanban,
   BarChart2,
   Trash2,
@@ -99,9 +98,14 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
   });
 
   return (
-    <aside className={cn("bg-white border-r border-zinc-200 flex flex-col overflow-y-auto", className)}>
+    <aside
+      className={cn(
+        "bg-[var(--tf-sidebar-bg)] flex flex-col overflow-y-auto border-r border-white/[0.06]",
+        className
+      )}
+    >
       {/* Workspace Switcher */}
-      <div className="p-4 border-b border-zinc-100">
+      <div className="p-4 border-b border-white/[0.06]">
         <WorkspaceSwitcher 
           workspaces={workspaces} 
           activeWorkspaceId={activeWorkspaceId} 
@@ -110,7 +114,7 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
 
       {/* "+ New Task" — restricted to Admin/Manager (PRD US-01) */}
       {isManagerOrAdmin && (
-        <div className="px-4 py-4 border-b border-zinc-100">
+        <div className="px-4 py-4 border-b border-white/[0.06]">
           <div className="flex w-full [&>button]:w-full">
             <NewTaskButton />
           </div>
@@ -120,23 +124,37 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
       {/* Main Menu */}
       <nav className="flex-1 p-4 space-y-8">
         <div>
-          <h3 className="px-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">Chính</h3>
-          <ul className="space-y-1">
+          <h3 className="px-3 text-[10px] font-semibold text-white/25 uppercase tracking-[0.15em] mb-3">
+            Chính
+          </h3>
+          <ul className="space-y-0.5">
             {visibleMenuItems.map((item) => {
               const active = pathname === item.href;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.disabled ? "#" : item.href}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group ${
-                      active 
-                        ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                    } ${item.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+                      active
+                        ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-white"
+                        : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]",
+                      item.disabled && "opacity-40 cursor-not-allowed"
+                    )}
                   >
-                    <item.icon className={`w-4 h-4 ${active ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} />
-                    <span className="text-sm font-medium">{item.title}</span>
-                    {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
+                    {/* Active indicator bar */}
+                    {active && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-gradient-to-b from-indigo-400 to-purple-500" />
+                    )}
+                    <item.icon
+                      className={cn(
+                        "w-[18px] h-[18px] transition-colors",
+                        active
+                          ? "text-indigo-400"
+                          : "text-white/30 group-hover:text-white/60"
+                      )}
+                    />
+                    <span className="text-[13px] font-medium">{item.title}</span>
                   </Link>
                 </li>
               );
@@ -146,23 +164,35 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
 
         {isAdmin && (
           <div>
-            <h3 className="px-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">Cài đặt</h3>
-            <ul className="space-y-1">
+            <h3 className="px-3 text-[10px] font-semibold text-white/25 uppercase tracking-[0.15em] mb-3">
+              Cài đặt
+            </h3>
+            <ul className="space-y-0.5">
               {visibleSettingsItems.map((item) => {
                 const active = pathname === item.href;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group ${
-                        active 
-                          ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
-                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                      }`}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+                        active
+                          ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-white"
+                          : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                      )}
                     >
-                      <item.icon className={`w-4 h-4 ${active ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} />
-                      <span className="text-sm font-medium">{item.title}</span>
-                      {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
+                      {active && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-gradient-to-b from-indigo-400 to-purple-500" />
+                      )}
+                      <item.icon
+                        className={cn(
+                          "w-[18px] h-[18px] transition-colors",
+                          active
+                            ? "text-indigo-400"
+                            : "text-white/30 group-hover:text-white/60"
+                        )}
+                      />
+                      <span className="text-[13px] font-medium">{item.title}</span>
                     </Link>
                   </li>
                 );
@@ -172,9 +202,9 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
         )}
       </nav>
 
-      {/* Footer / User info could go here */}
-      <div className="p-4 border-t border-zinc-100">
-        <div className="px-4 py-2 text-[10px] text-zinc-400 font-medium">
+      {/* Footer */}
+      <div className="p-4 border-t border-white/[0.06]">
+        <div className="px-3 py-2 text-[10px] text-white/15 font-medium tracking-wider">
           TaskFlow v0.1.0
         </div>
       </div>

@@ -22,10 +22,10 @@ const STATUS_COLUMNS: {
   label: string;
   dotColor: string;
 }[] = [
-  { id: "ToDo",       label: "To Do",      dotColor: "bg-zinc-400" },
-  { id: "InProgress", label: "In Progress", dotColor: "bg-blue-400" },
-  { id: "InReview",   label: "In Review",   dotColor: "bg-purple-400" },
-  { id: "Done",       label: "Done",        dotColor: "bg-emerald-400" },
+  { id: "ToDo",       label: "To Do",      dotColor: "var(--tf-status-todo)" },
+  { id: "InProgress", label: "In Progress", dotColor: "var(--tf-status-inprogress)" },
+  { id: "InReview",   label: "In Review",   dotColor: "var(--tf-status-inreview)" },
+  { id: "Done",       label: "Done",        dotColor: "var(--tf-success)" },
 ];
 
 export interface SharedKanbanBoardProps {

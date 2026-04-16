@@ -32,18 +32,18 @@ export function OfflineBanner() {
   if (!isOffline || dismissed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[10000] p-1 animate-in slide-in-from-top duration-300">
-      <div className="bg-zinc-900 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center justify-between gap-4 max-w-fit mx-auto border border-white/10">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <WifiOff className="w-4 h-4 text-amber-400" />
+    <div className="fixed top-0 left-0 right-0 z-[10000] p-2 tf-animate-in">
+      <div className="bg-[var(--tf-warning-muted)] text-[var(--tf-warning)] px-4 py-2.5 rounded-full shadow-md flex items-center justify-between gap-4 max-w-fit mx-auto border border-[var(--tf-warning)]/20 backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold tracking-wide">
+          <WifiOff className="w-4 h-4 shrink-0" />
           <span>Bạn đang ngoại tuyến. Một số tính năng có thể không hoạt động.</span>
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="p-1 hover:bg-white/10 rounded-full transition-colors"
+          className="p-1 hover:bg-[var(--tf-warning)]/10 rounded-full transition-colors"
           aria-label="Đóng"
         >
-          <X className="w-4 h-4 opacity-60" />
+          <X className="w-4 h-4 opacity-80" />
         </button>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLoadingDelay } from "@/hooks/useLoadingDelay";
-import { Search, Loader2, FileText, CheckCircle2 } from "lucide-react";
+import { Search, Loader2, FileText, CheckCircle2, Command } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { Task } from "@prisma/client";
@@ -136,8 +136,8 @@ export const GlobalSearch = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    if (status === "Done") return <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />;
-    return <FileText className="w-4 h-4 text-zinc-400 shrink-0" />;
+    if (status === "Done") return <CheckCircle2 className="w-4 h-4 text-[var(--tf-success)] shrink-0" />;
+    return <FileText className="w-4 h-4 text-[var(--tf-text-muted)] shrink-0" />;
   };
 
   const formatDate = (dateStr: string | null) => {
@@ -150,13 +150,13 @@ export const GlobalSearch = () => {
   };
 
   return (
-    <div className="relative w-full max-w-md" ref={containerRef}>
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2 h-4 w-4 text-zinc-500" />
+    <div className="relative w-full max-w-xl" ref={containerRef}>
+      <div className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--tf-text-muted)] group-focus-within:text-[var(--tf-accent)] transition-colors" />
         <input
           type="text"
-          placeholder="Tìm kiếm task..."
-          className="w-full bg-zinc-100 border-transparent focus:bg-white focus:border-zinc-300 focus:ring-2 focus:ring-indigo-500/20 text-sm h-8 pl-8 pr-8 rounded-md transition-all outline-none"
+          placeholder="Tìm kiếm mọi thứ..."
+          className="w-full bg-[var(--tf-bg-subtle)] border border-transparent focus:bg-[var(--tf-bg-card)] focus:border-[var(--tf-accent-muted)] focus:shadow-[0_0_0_4px_var(--tf-accent-subtle)] text-sm h-9 pl-9 pr-14 rounded-full transition-all outline-none font-medium placeholder:text-[var(--tf-text-muted)]"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -167,24 +167,33 @@ export const GlobalSearch = () => {
             if (query.trim().length > 0) setIsOpen(true);
           }}
         />
+        
+        {/* Command shortcut visual (inactive for now) */}
+        {!query && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1">
+            <span className="text-[10px] font-bold text-[var(--tf-text-muted)] bg-white border border-[var(--tf-border)] px-1.5 py-0.5 rounded shadow-sm opacity-60">⌘K</span>
+          </div>
+        )}
+
         {showLoader && (
-          <Loader2 className="absolute right-2.5 top-2 h-4 w-4 text-zinc-400 animate-spin" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--tf-text-muted)] animate-spin" />
         )}
 
       </div>
 
       {isOpen && query.trim().length > 0 && (
-        <div className="absolute top-11 left-0 right-0 bg-white border border-zinc-200 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden z-[50000] animate-in fade-in zoom-in-95 duration-200 origin-top">
-          <div className="max-h-[400px] overflow-y-auto w-full py-1.5 px-1.5">
+        <div className="absolute top-12 left-0 right-0 bg-[var(--tf-bg-card)] border border-[var(--tf-border)] rounded-2xl overflow-hidden z-[50000] tf-animate-in shadow-xl">
+          <div className="max-h-[400px] overflow-y-auto w-full p-2">
             {error && (
-              <div className="px-4 py-3 text-sm text-red-500 text-center">
+              <div className="px-4 py-3 text-sm text-[var(--tf-error)] text-center">
                 {error}
               </div>
             )}
             
             {!error && !isSearching && results.length === 0 && (
-              <div className="px-4 py-6 text-sm text-zinc-500 text-center">
-                Không tìm thấy task
+              <div className="px-4 py-8 text-sm text-[var(--tf-text-muted)] text-center flex flex-col items-center">
+                <Search className="w-8 h-8 mb-3 opacity-20" />
+                Không tìm thấy kết quả nào cho "{query}"
               </div>
             )}
 
@@ -193,48 +202,38 @@ export const GlobalSearch = () => {
                 key={result.id}
                 role="button"
                 tabIndex={0}
-                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b border-zinc-50 last:border-0 ${
+                className={`flex items-start gap-3 p-3 cursor-pointer rounded-xl transition-all ${
                   selectedIndex === index 
-                    ? "bg-zinc-50 border-l-2 border-l-indigo-500 pl-[14px]" 
-                    : "hover:bg-zinc-50/80 pl-4 border-l-2 border-l-transparent"
+                    ? "bg-[var(--tf-bg-subtle)]" 
+                    : "hover:bg-[var(--tf-bg-subtle)]"
                 }`}
                 onClick={() => handleSelect(result.id)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
-                <div className="shrink-0">
+                <div className="mt-0.5 w-6 h-6 rounded-md bg-white border border-[var(--tf-border)] flex items-center justify-center shrink-0 shadow-sm">
                   {getStatusIcon(result.status)}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-tight mb-0.5">
-                    {result.project.name}
-                  </span>
-                  <span className="text-sm font-medium text-zinc-900 truncate">
-                    {result.title}
-                  </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                      result.status === "Done" ? "bg-emerald-100 text-emerald-700" :
-                      result.status === "InProgress" ? "bg-blue-100 text-blue-700" :
-                      result.status === "InReview" ? "bg-amber-100 text-amber-700" :
-                      "bg-zinc-100 text-zinc-600"
-                    }`}>
-                      {result.status}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: result.project.color }} />
+                    <span className="text-[10px] font-bold text-[var(--tf-text-sub)] uppercase tracking-widest line-clamp-1">
+                      {result.project.name}
                     </span>
                   </div>
+                  <span className="text-sm font-semibold text-[var(--tf-text)] leading-snug line-clamp-2">
+                    {result.title}
+                  </span>
+                  
                 </div>
-                <div className="shrink-0 flex flex-col items-end gap-1.5">
-                  {result.assignee && (
-                    <span className="text-[10px] font-medium text-zinc-500 truncate max-w-[80px]">
-                      {result.assignee.name}
-                    </span>
-                  )}
-                  {result.due_date && (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                      new Date(result.due_date) < new Date() ? "bg-red-50 text-red-600" : "text-zinc-400 bg-zinc-50 border border-zinc-100"
-                    }`}>
-                      {formatDate(result.due_date)}
-                    </span>
-                  )}
+                <div className="shrink-0 flex flex-col items-end gap-1.5 pl-2">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                    result.status === "Done" ? "bg-[var(--tf-success-muted)] text-[var(--tf-success)]" :
+                    result.status === "InProgress" ? "bg-[var(--tf-status-inprogress)]/10 text-[var(--tf-status-inprogress)]" :
+                    result.status === "InReview" ? "bg-[var(--tf-status-inreview)]/10 text-[var(--tf-status-inreview)]" :
+                    "bg-[var(--tf-bg-subtle)] text-[var(--tf-text-sub)]"
+                  }`}>
+                    {result.status}
+                  </span>
                 </div>
               </div>
             ))}
@@ -244,3 +243,4 @@ export const GlobalSearch = () => {
     </div>
   );
 };
+
