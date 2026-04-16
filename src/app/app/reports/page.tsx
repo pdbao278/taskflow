@@ -14,7 +14,7 @@ export default async function ReportsPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-zinc-900">Báo cáo Team</h1>
         <p className="text-sm text-zinc-500 mt-1">

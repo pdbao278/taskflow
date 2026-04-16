@@ -174,7 +174,7 @@ export const GlobalSearch = () => {
       </div>
 
       {isOpen && query.trim().length > 0 && (
-        <div className="absolute top-11 left-0 right-0 bg-white border border-zinc-200 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top">
+        <div className="absolute top-11 left-0 right-0 bg-white border border-zinc-200 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden z-[50000] animate-in fade-in zoom-in-95 duration-200 origin-top">
           <div className="max-h-[400px] overflow-y-auto w-full py-1.5 px-1.5">
             {error && (
               <div className="px-4 py-3 text-sm text-red-500 text-center">

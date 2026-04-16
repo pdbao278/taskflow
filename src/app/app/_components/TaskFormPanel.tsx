@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -231,11 +232,18 @@ export function TaskFormPanel({
 
   const priorityOption = PRIORITY_OPTIONS.find((p) => p.value === watchedPriority);
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[99999] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={handleClose}
@@ -247,7 +255,7 @@ export function TaskFormPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Tạo task mới"
-        className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 bottom-0 z-[100000] w-full max-w-lg bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -524,6 +532,7 @@ export function TaskFormPanel({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

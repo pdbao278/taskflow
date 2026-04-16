@@ -97,7 +97,7 @@ export async function POST(
 
     const task = await prisma.task.findUnique({
       where: { id },
-      select: { workspace_id: true, deleted_at: true },
+      select: { workspace_id: true, deleted_at: true, title: true },
     });
 
     if (!task || task.deleted_at !== null) {
@@ -156,7 +156,7 @@ export async function POST(
             user_id: targetId,
             type: "Mention",
             reference_id: id,
-            content: `${user.name} đã mention bạn trong task "${task!.workspace_id}"`, // Simplified content for mention
+            content: `${user.name} đã nhắc tên bạn trong task "${task!.title}"`,
           });
         }
       });

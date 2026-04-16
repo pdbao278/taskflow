@@ -105,18 +105,57 @@ export async function GET(
       prisma.activityLog.count({ where: { task_id: taskId } }),
     ]);
 
-    // 6. Map user data — handle removed users (PRD 10.1)
+    // 6. Resolve IDs to names for 'assignee' field changes (PRD FR-10)
+    const assigneeIds = new Set<string>();
+    logs.forEach((log) => {
+      if (log.field_changed === "assignee" || log.field_changed === "assignee_id") {
+        if (log.old_value && log.old_value !== "null") assigneeIds.add(log.old_value);
+        if (log.new_value && log.new_value !== "null") assigneeIds.add(log.new_value);
+      }
+    });
+
+    const userMap = new Map<string, { name: string; isActive: boolean }>();
+    if (assigneeIds.size > 0) {
+      const users = await prisma.user.findMany({
+        where: { id: { in: Array.from(assigneeIds) } },
+        select: {
+          id: true,
+          name: true,
+          workspace_members: {
+            where: { workspace_id: ws.workspaceId },
+            select: { id: true },
+          },
+        },
+      });
+      users.forEach((u) => {
+        userMap.set(u.id, {
+          name: u.name,
+          isActive: (u as any).workspace_members?.length > 0,
+        });
+      });
+    }
+
+    const formatBoundValue = (val: string | null) => {
+      if (!val || val === "null") return null;
+      const user = userMap.get(val);
+      if (!user) return val; // Fallback to ID if not found (unexpected)
+      return user.isActive ? user.name : `[Removed User: ${user.name}]`;
+    };
+
+    // 7. Map user data — handle removed users (PRD 10.1)
     const data = logs.map((log) => {
       const isUserActive =
         log.user && (log.user as any).workspace_members?.length > 0;
+
+      const isAssigneeChange = log.field_changed === "assignee" || log.field_changed === "assignee_id";
 
       return {
         id: log.id,
         task_id: log.task_id,
         action_type: log.action_type,
-        field_changed: log.field_changed,
-        old_value: log.old_value,
-        new_value: log.new_value,
+        field_changed: log.field_changed === "assignee_id" ? "assignee" : log.field_changed,
+        old_value: isAssigneeChange ? formatBoundValue(log.old_value) : log.old_value,
+        new_value: isAssigneeChange ? formatBoundValue(log.new_value) : log.new_value,
         created_at: log.created_at,
         user: log.user
           ? isUserActive

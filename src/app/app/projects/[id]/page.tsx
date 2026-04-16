@@ -17,7 +17,7 @@ export default async function ProjectDetailPage(
   const currentUserRole = activeWorkspace.currentRole;
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <ProjectDetailClient
         projectId={id}
         currentUserRole={currentUserRole}

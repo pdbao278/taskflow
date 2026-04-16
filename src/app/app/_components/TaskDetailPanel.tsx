@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/apiFetch";
 import {
   X,
@@ -293,11 +294,18 @@ export function TaskDetailPanel({
   const canDelete = !readOnly && task && (isManagerOrAdmin || isCreator);
   const overdue = task ? isOverdue(task.due_date, task.status) : false;
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[99999] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -309,7 +317,7 @@ export function TaskDetailPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Chi tiết task"
-        className={`fixed right-0 top-0 bottom-0 z-50 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 bottom-0 z-[100000] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         } ${isResizing ? "transition-none select-none" : ""}`}
         style={{ 
@@ -694,6 +702,7 @@ export function TaskDetailPanel({
         )}
 
       </div>
-    </>
+    </>,
+    document.body
   );
 }

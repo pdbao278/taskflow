@@ -10,7 +10,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 w-full">
       <TaskDetailView taskId={id} />
     </div>
   );

@@ -57,10 +57,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </div>
 
-            {/* "+ New Task" — restricted to Admin/Manager (PRD US-01) */}
-            {(activeWorkspace?.currentRole === "Admin" || activeWorkspace?.currentRole === "Manager") && (
-              <NewTaskButton />
-            )}
             <NotificationBell />
             <LogoutButton />
           </div>

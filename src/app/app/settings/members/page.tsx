@@ -64,9 +64,11 @@ export default async function MembersPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8">
-      <h1 className="text-2xl font-bold mb-2">Thành viên Workspace</h1>
-      <p className="text-gray-500 mb-8">Quản lý thành viên trong workspace {activeWorkspace.name}</p>
+    <div className="w-full p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-2">Thành viên Workspace</h1>
+        <p className="text-gray-500">Quản lý thành viên trong workspace {activeWorkspace.name}</p>
+      </div>
       
       <MembersView 
         initialMembers={membersList}

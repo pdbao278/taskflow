@@ -35,7 +35,7 @@ export function ToastContainer() {
   if (!mounted) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-md w-full pointer-events-none">
+    <div className="fixed bottom-6 right-6 z-[100001] flex flex-col gap-3 max-w-md w-full pointer-events-none">
       {toasts.map((toast) => {
         const Icon = icons[toast.type];
         return (

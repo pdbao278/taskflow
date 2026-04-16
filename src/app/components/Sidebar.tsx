@@ -13,7 +13,8 @@ import {
   BarChart2,
   Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/utils"; // Wait, I might not have cn() yet. Let's check or implement.
+import { cn } from "@/lib/utils";
+import { NewTaskButton } from "../app/_components/NewTaskButton";
 
 const menuItems: { title: string; icon: any; href: string; disabled?: boolean }[] = [
   {
@@ -106,6 +107,15 @@ export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarPro
           activeWorkspaceId={activeWorkspaceId} 
         />
       </div>
+
+      {/* "+ New Task" — restricted to Admin/Manager (PRD US-01) */}
+      {isManagerOrAdmin && (
+        <div className="px-4 py-4 border-b border-zinc-100">
+          <div className="flex w-full [&>button]:w-full">
+            <NewTaskButton />
+          </div>
+        </div>
+      )}
 
       {/* Main Menu */}
       <nav className="flex-1 p-4 space-y-8">

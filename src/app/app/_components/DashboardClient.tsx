@@ -54,12 +54,12 @@ export function DashboardClient({ user }: { user: any }) {
   }, [fetchData]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="p-6 w-full space-y-8 animate-in fade-in duration-500">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">
-            Chào {user.name.split(' ')[0]} 👋
+            Chào {user.name} 👋
           </h1>
           <p className="text-zinc-500 text-sm mt-1">
             Chào mừng bạn quay lại TaskFlow. Đây là tổng quan công việc của bạn.
