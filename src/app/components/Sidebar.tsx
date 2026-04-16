@@ -66,9 +66,10 @@ interface WorkspaceInfo {
 interface SidebarProps {
   workspaces: WorkspaceInfo[];
   activeWorkspaceId: string;
+  className?: string;
 }
 
-export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
+export function Sidebar({ workspaces, activeWorkspaceId, className }: SidebarProps) {
   const pathname = usePathname();
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -91,7 +92,7 @@ export function Sidebar({ workspaces, activeWorkspaceId }: SidebarProps) {
   });
 
   return (
-    <aside className="w-64 bg-white border-r border-zinc-200 flex flex-col h-screen sticky top-0 overflow-y-auto">
+    <aside className={cn("bg-white border-r border-zinc-200 flex flex-col overflow-y-auto", className)}>
       {/* Workspace Switcher */}
       <div className="p-4 border-b border-zinc-100">
         <WorkspaceSwitcher 

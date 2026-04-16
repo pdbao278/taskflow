@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLoadingDelay } from "@/hooks/useLoadingDelay";
 import { Search, Loader2, FileText, CheckCircle2 } from "lucide-react";
+
 import { useRouter } from "next/navigation";
 import { Task } from "@prisma/client";
 
@@ -30,6 +32,9 @@ export const GlobalSearch = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
+
+  const showLoader = useLoadingDelay(isSearching);
+
   
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -145,7 +150,7 @@ export const GlobalSearch = () => {
   };
 
   return (
-    <div className="relative w-full max-w-md hidden md:block" ref={containerRef}>
+    <div className="relative w-full max-w-md" ref={containerRef}>
       <div className="relative">
         <Search className="absolute left-2.5 top-2 h-4 w-4 text-zinc-500" />
         <input
@@ -162,9 +167,10 @@ export const GlobalSearch = () => {
             if (query.trim().length > 0) setIsOpen(true);
           }}
         />
-        {isSearching && (
+        {showLoader && (
           <Loader2 className="absolute right-2.5 top-2 h-4 w-4 text-zinc-400 animate-spin" />
         )}
+
       </div>
 
       {isOpen && query.trim().length > 0 && (

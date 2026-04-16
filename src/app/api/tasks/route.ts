@@ -4,10 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
-// Strip all HTML tags to prevent XSS — PRD 10.1
-function sanitizeText(input: string): string {
-  return input.replace(/<[^>]*>/g, "").trim();
-}
+import { sanitizeText } from "@/lib/sanitization";
 
 const createTaskSchema = z.object({
   title: z
@@ -55,32 +52,44 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        workspace_id: ws.id,
-        deleted_at: null,
-        ...(projectId && { project_id: projectId }),
-        ...(assigneeId && { assignee_id: assigneeId }),
-        ...(status && { status: status as any }),
-        ...(priority && { priority: priority as any }),
-      },
-      include: {
-        project: { select: { id: true, name: true, color: true } },
-        assignee: { 
-          select: { 
-            id: true, 
-            name: true, 
-            email: true,
-            workspace_members: {
-              where: { workspace_id: ws.id },
-              select: { id: true }
-            }
-          } 
+    // Pagination (NFR-01)
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
+    const skip = (page - 1) * limit;
+
+    const where = {
+      workspace_id: ws.id,
+      deleted_at: null,
+      ...(projectId && { project_id: projectId }),
+      ...(assigneeId && { assignee_id: assigneeId }),
+      ...(status && { status: status as any }),
+      ...(priority && { priority: priority as any }),
+    };
+
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        include: {
+          project: { select: { id: true, name: true, color: true } },
+          assignee: { 
+            select: { 
+              id: true, 
+              name: true, 
+              email: true,
+              workspace_members: {
+                where: { workspace_id: ws.id },
+                select: { id: true }
+              }
+            } 
+          },
+          creator: { select: { id: true, name: true } },
         },
-        creator: { select: { id: true, name: true } },
-      },
-      orderBy: { created_at: "desc" },
-    });
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ]);
 
     // Handle removed users: Assignee must exist in DB AND still be part of the workspace.
     const data = tasks.map((t) => {
@@ -94,7 +103,16 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ 
+      success: true, 
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message || "Internal Server Error" },

@@ -4,10 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
-// Sanitize: strip HTML tags to prevent XSS
-function sanitizeText(input: string): string {
-  return input.replace(/<[^>]*>/g, "").trim();
-}
+import { sanitizeText } from "@/lib/sanitization";
 
 const createProjectSchema = z.object({
   name: z
@@ -41,21 +38,34 @@ export async function GET(req: NextRequest) {
 
     const prisma = getPrisma();
 
-    const projects = await prisma.project.findMany({
-      where: { workspace_id: ws.id },
-      orderBy: { created_at: "desc" },
-      include: {
-        _count: {
-          select: {
-            tasks: { where: { deleted_at: null } },
+    // Pagination (NFR-01)
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
+    const skip = (page - 1) * limit;
+
+    const where = { workspace_id: ws.id };
+
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        include: {
+          _count: {
+            select: {
+              tasks: { where: { deleted_at: null } },
+            },
+          },
+          tasks: {
+            where: { deleted_at: null, status: "Done" },
+            select: { id: true },
           },
         },
-        tasks: {
-          where: { deleted_at: null, status: "Done" },
-          select: { id: true },
-        },
-      },
-    });
+        skip,
+        take: limit,
+      }),
+      prisma.project.count({ where }),
+    ]);
 
     const data = projects.map((p) => ({
       id: p.id,
@@ -70,7 +80,16 @@ export async function GET(req: NextRequest) {
       completed_tasks: p.tasks.length,
     }));
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ 
+      success: true, 
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message || "Internal Server Error" },

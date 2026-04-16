@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { TaskComments } from "./TaskComments";
 import { TaskActivityTab } from "./TaskActivityTab";
+import { toast } from "@/lib/toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,11 +184,10 @@ export function TaskDetailPanel({
     };
   }, [isResizing, panelWidth]);
 
-  const addToast = useCallback((msg: string, type: "success" | "error" = "success") => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
+  const addToast = (msg: string, type: "success" | "error" = "success") => {
+    if (type === "success") toast.success(msg);
+    else toast.error(msg);
+  };
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<EditForm>({
     resolver: zodResolver(editSchema),
@@ -422,7 +422,7 @@ export function TaskDetailPanel({
                         {task.title}
                       </h1>
                       {overdue && (
-                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-white bg-red-500 px-2.5 py-1 rounded-full shadow-sm shadow-red-200/50">
                           <AlertCircle className="w-3 h-3" /> Overdue
                         </span>
                       )}
@@ -693,22 +693,6 @@ export function TaskDetailPanel({
           </div>
         )}
 
-        {/* Toasts */}
-        <div className="fixed bottom-6 left-6 z-[200] flex flex-col gap-2 pointer-events-none">
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${
-                t.type === "success"
-                  ? "bg-white border-emerald-200 text-emerald-700"
-                  : "bg-white border-red-200 text-red-600"
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              {t.msg}
-            </div>
-          ))}
-        </div>
       </div>
     </>
   );

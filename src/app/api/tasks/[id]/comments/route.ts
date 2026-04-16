@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
+import { sanitizeText } from "@/lib/sanitization";
 
 async function resolveWorkspace(userId: string) {
   const active = await resolveActiveWorkspace(userId);
@@ -61,11 +62,6 @@ const commentSchema = z.object({
   content: z.string().min(1, "Comment không được để trống").max(2000, "Comment tối đa 2000 ký tự"),
 });
 
-function sanitizeContent(content: string): string {
-  // Simple XSS sanitization by removing tags (requirement: plain text, remove <script>)
-  return content.replace(/<\/?[^>]+(>|$)/g, "");
-}
-
 // POST /api/tasks/[id]/comments
 export async function POST(
   req: NextRequest,
@@ -91,7 +87,7 @@ export async function POST(
     }
 
     const rawContent = parsed.data.content;
-    const content = sanitizeContent(rawContent);
+    const content = sanitizeText(rawContent);
 
     if (!content.trim()) {
       return NextResponse.json({ success: false, error: "Comment không được để trống sau khi sanitize" }, { status: 400 });
@@ -119,14 +115,14 @@ export async function POST(
     });
 
     const mentionedUserIds = new Set<string>();
-    allMembers.forEach(member => {
+    allMembers.forEach((member: any) => {
       // Check if "@Name" is in content
       if (content.includes(`@${member.user.name}`)) {
         mentionedUserIds.add(member.user.id);
       }
     });
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create comment
       const newComment = await tx.comment.create({
         data: {

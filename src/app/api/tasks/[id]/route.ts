@@ -4,9 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { resolveActiveWorkspace } from "@/lib/workspace";
 import z from "zod";
 
-function sanitizeText(input: string): string {
-  return input.replace(/<[^>]*>/g, "").trim();
-}
+import { sanitizeText } from "@/lib/sanitization";
 
 async function resolveWorkspace(userId: string) {
   const active = await resolveActiveWorkspace(userId);

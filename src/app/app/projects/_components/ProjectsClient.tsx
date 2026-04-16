@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLoadingDelay } from "@/hooks/useLoadingDelay";
+
 import Link from "next/link";
 import { apiFetch } from "@/lib/apiFetch";
 import { ProjectFormModal, type ProjectFormData } from "./ProjectFormModal";
@@ -80,6 +82,9 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
   const [formError, setFormError] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const showLoading = useLoadingDelay(loading);
+
+
   const canMutate = currentUserRole === "Admin" || currentUserRole === "Manager";
 
   const addToast = useCallback((type: "success" | "error", message: string) => {
@@ -146,8 +151,9 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <span className="text-sm text-zinc-500">
-            {loading ? "Đang tải..." : `${activeProjects.length} dự án đang hoạt động`}
+            {showLoading ? "Đang tải..." : `${activeProjects.length} dự án đang hoạt động`}
           </span>
+
           <button
             onClick={() => fetchProjects(true)}
             disabled={refreshing}
@@ -174,7 +180,8 @@ export function ProjectsClient({ workspaceId, currentUserRole }: ProjectsClientP
       </div>
 
       {/* Loading skeletons */}
-      {loading && (
+      {showLoading && (
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />

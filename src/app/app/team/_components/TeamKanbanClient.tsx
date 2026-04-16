@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLoadingDelay } from "@/hooks/useLoadingDelay";
+
 import { SharedKanbanBoard } from "../../_components/kanban/SharedKanbanBoard";
 import { apiFetch } from "@/lib/apiFetch";
 import { TaskCard, type TaskItem } from "../../_components/TaskCard";
@@ -133,6 +135,9 @@ export function TeamKanbanClient({
       return isDragActiveRef.current ? false : 5000;
     },
   });
+
+  const showLoading = useLoadingDelay(isLoading);
+
 
   // ─── Status change với optimistic UI ──────────────────────────────────────
 
@@ -312,7 +317,8 @@ export function TeamKanbanClient({
         tasks={tasks}
         currentUserId={currentUserId}
         currentUserRole={currentUserRole}
-        isLoading={isLoading}
+        isLoading={showLoading}
+
         onTaskClick={(t) => setSelectedTaskId(t.id)}
         onStatusChange={handleStatusChange}
         onAddTask={(status) => {

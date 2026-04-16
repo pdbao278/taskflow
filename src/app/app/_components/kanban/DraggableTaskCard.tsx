@@ -1,6 +1,6 @@
 "use client";
 
-import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ChevronDown } from "lucide-react";
 import { TaskCard, type TaskItem } from "../TaskCard";
@@ -32,19 +32,24 @@ export function DraggableTaskCard({
   currentUserRole,
   currentUserId,
 }: DraggableTaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      disabled: !canDrag,
-      data: { task },
-    });
+  const { 
+    attributes, 
+    listeners, 
+    setNodeRef, 
+    transform, 
+    transition,
+    isDragging 
+  } = useSortable({
+    id: task.id,
+    disabled: !canDrag,
+    data: { task },
+  });
 
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-        zIndex: 999,
-      }
-    : undefined;
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 999 : undefined,
+  };
 
   const isManagerOrAdmin =
     currentUserRole === "Manager" || currentUserRole === "Admin";
@@ -57,9 +62,12 @@ export function DraggableTaskCard({
       style={style}
       {...(canDrag ? listeners : {})}
       {...(canDrag ? attributes : {})}
-      className={`group relative transition-all duration-150 ${canDrag ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-zinc-300 rounded-xl" : ""} ${
+      tabIndex={canDrag ? 0 : -1}
+      className={`group relative outline-none transition-all duration-150 rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+        canDrag ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-zinc-300" : ""
+      } ${
         isDragging
-          ? "opacity-50 scale-[1.02] shadow-2xl ring-2 ring-blue-400/60 rounded-xl z-50"
+          ? "opacity-50 scale-[1.02] shadow-2xl ring-2 ring-blue-400/60 z-50"
           : ""
       }`}
     >

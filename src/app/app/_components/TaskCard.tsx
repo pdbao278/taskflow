@@ -122,7 +122,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
           {/* Overdue badge — PRD 10.1 */}
           {overdue && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm shadow-red-200/50">
               <AlertCircle className="w-2.5 h-2.5" />
               Overdue
             </span>

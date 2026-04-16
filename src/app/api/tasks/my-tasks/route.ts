@@ -63,37 +63,44 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        workspace_id: ws.id,
-        assignee_id: targetUserId,
-        deleted_at: null,
-        status: statusParam ? (statusParam as task_status) : { not: "Done" },
-      },
-      include: {
-        project: { select: { id: true, name: true, color: true } },
-        assignee: { select: { id: true, name: true, email: true } },
-        creator: { select: { id: true, name: true } },
-      },
-    });
+    // Pagination (NFR-01)
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
+    const skip = (page - 1) * limit;
+
+    const where = {
+      workspace_id: ws.id,
+      assignee_id: targetUserId,
+      deleted_at: null,
+      status: statusParam ? (statusParam as task_status) : { not: task_status.Done },
+    };
+
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        include: {
+          project: { select: { id: true, name: true, color: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+          creator: { select: { id: true, name: true } },
+        },
+        // Sort by due_date nulls last, then due_date asc (DB can't easily sort "overdue" first without extra logic, 
+        // so we'll fetch a bit more or just keep simple DB sort and let FE handle highlight).
+        // Actually for pagination, we MUST sort in DB.
+        orderBy: [
+          { status: "asc" }, // Just a stable sort
+          { due_date: "asc" },
+        ],
+        skip,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ]);
 
     const now = new Date();
     
-    tasks.sort((a: any, b: any) => {
-      const aOverdue = a.due_date && new Date(a.due_date) < now;
-      const bOverdue = b.due_date && new Date(b.due_date) < now;
-
-      if (aOverdue && !bOverdue) return -1;
-      if (!aOverdue && bOverdue) return 1;
-
-      if (!a.due_date && b.due_date) return 1;
-      if (a.due_date && !b.due_date) return -1;
-      if (a.due_date && b.due_date) {
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      }
-
-      return 0;
-    });
+    // Sorting logic (simplified, DB sort is applied above, but we can re-sort locally if needed for small page sizes)
+    // Note: Local sorting on a small page might be inconsistent across pages.
+    // We'll trust the DB sort for pagination consistency.
 
     const data = tasks.map((t: any) => ({
       ...t,
@@ -103,9 +110,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data,
-      // Trả về metadata để FE biết đây là read-only mode
       meta: {
         is_read_only: userIdParam !== null && userIdParam !== user.id,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (err: any) {
