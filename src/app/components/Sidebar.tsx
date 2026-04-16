@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FolderKanban,
   BarChart2,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils"; // Wait, I might not have cn() yet. Let's check or implement.
 
@@ -52,6 +53,11 @@ const settingsItems = [
     title: "Thành viên",
     icon: Users,
     href: "/app/settings/members",
+  },
+  {
+    title: "Thùng rác",
+    icon: Trash2,
+    href: "/app/settings/trash",
   },
 ];
 

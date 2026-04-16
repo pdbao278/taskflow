@@ -1,0 +1,39 @@
+name: Database Daily Backup
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Every day at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    name: Backup PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create Backup
+        id: create_backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # Extract host, user, dbname from DATABASE_URL if needed, 
+          # but pg_dump handles full URLs too.
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          FILENAME="backup_${TIMESTAMP}.sql"
+          pg_dump "$DATABASE_URL" > "$FILENAME"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ steps.create_backup.outputs.timestamp }}
+          path: ${{ steps.create_backup.outputs.filename }}
+          retention-days: 30 # NFR-07: Keep for 30 days
