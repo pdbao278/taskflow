@@ -6,6 +6,7 @@ import { AuthSync } from "../components/AuthSync";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { NewTaskButton } from "./_components/NewTaskButton";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { GlobalSearch } from "./_components/GlobalSearch";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser();
@@ -30,12 +31,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Global header with "+ Thêm Task" button (NFR-05: max 3 clicks) */}
-        <header className="h-12 border-b border-zinc-200 bg-white flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-2">
+        <header className="h-12 border-b border-zinc-200 bg-white flex items-center justify-between px-6 shrink-0 gap-4">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-[10px] font-bold bg-zinc-900 text-white px-1.5 py-0.5 rounded tracking-tighter">TF</span>
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Workspace</span>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Global Search Bar (FR-12) */}
+          <div className="flex-1 max-w-xl flex justify-center">
+            <GlobalSearch />
+          </div>
+
+          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="flex items-center gap-2 mr-2">
               <div className="w-6 h-6 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center">
                 <span className="text-[10px] font-bold text-zinc-600">
