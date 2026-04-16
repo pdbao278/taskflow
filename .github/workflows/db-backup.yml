@@ -26,11 +26,18 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          # Extract host, user, dbname from DATABASE_URL if needed, 
-          # but pg_dump handles full URLs too.
+          # Add PostgreSQL 17 to PATH
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          
+          echo "Verifying pg_dump version:"
+          pg_dump --version
+          
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           FILENAME="backup_${TIMESTAMP}.sql"
-          pg_dump "$DATABASE_URL" > "$FILENAME"
+          
+          # Perform backup using the specified path to be absolutely sure
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" > "$FILENAME"
+          
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
 
