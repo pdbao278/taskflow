@@ -4,14 +4,13 @@ import { NotificationService } from "@/lib/services/notification.service";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await props.params;
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-
-  const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const isUnread = body.unread === true;
 
