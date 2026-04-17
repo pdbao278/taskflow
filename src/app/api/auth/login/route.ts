@@ -94,6 +94,8 @@ export async function POST(request: Request) {
       );
     }
 
+    // Credentials valid -> Login immediately (No OTP)
+    // Reset login failure count
     await getPrisma().user.update({
       where: { id: user.id },
       data: {
@@ -102,7 +104,7 @@ export async function POST(request: Request) {
       } as any,
     });
 
-    const token = signAuthToken(user);
+    const token = signAuthToken(user as any);
 
     const response = NextResponse.json(
       {
@@ -171,4 +173,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

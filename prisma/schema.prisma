@@ -14,6 +14,19 @@ model User {
   password_hash         String
   failed_login_attempts Int               @default(0)
   locked_until          DateTime?
+
+  // OTP Login
+  otp_login_code           String?
+  otp_login_expires_at     DateTime?
+  otp_login_failed_attempts Int               @default(0)
+  otp_login_locked_until    DateTime?
+
+  // OTP Reset Password
+  otp_reset_code           String?
+  otp_reset_expires_at     DateTime?
+  otp_reset_failed_attempts Int               @default(0)
+  otp_reset_locked_until    DateTime?
+
   created_at            DateTime          @default(now())
   updated_at            DateTime          @updatedAt
   activity_logs         ActivityLog[]
